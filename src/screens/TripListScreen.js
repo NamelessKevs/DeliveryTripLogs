@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import {getAllTripLogs} from '../database/db';
 import {checkAndSync} from '../services/syncService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TripListScreen = ({navigation}) => {
   const [trips, setTrips] = useState([]);
@@ -47,7 +48,6 @@ const TripListScreen = ({navigation}) => {
     setSyncing(true);
     try {
       const result = await checkAndSync();
-      
       if (result.success) {
         Alert.alert('Success', result.message);
         await loadTrips();
@@ -59,6 +59,18 @@ const TripListScreen = ({navigation}) => {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem('currentUser');
+    navigation.reset({
+      index: 0,
+      routes: [{name: 'Login'}],
+    });
+  };
+
+  const handleUserManagement = () => {
+    navigation.navigate('Accounts'); // Make sure you add this screen in App.js
   };
 
   const formatDateTime = (dateStr) => {
@@ -120,6 +132,10 @@ const TripListScreen = ({navigation}) => {
       {item.remarks && (
         <Text style={styles.remarks}>📝 {item.remarks}</Text>
       )}
+
+      {item.created_by && (
+        <Text style={styles.createdBy}>👤 {item.created_by}</Text>
+      )}
     </View>
   );
 
@@ -128,10 +144,14 @@ const TripListScreen = ({navigation}) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Trip Logs</Text>
-        <Text style={styles.count}>
-          Total: {trips.length} | Pending: {unsyncedCount}
-        </Text>
+        <View>
+          <Text style={styles.title}>Trip Logs</Text>
+        </View>
+        <View>
+          <Text style={styles.count}>
+            Total: {trips.length} | Pending: {unsyncedCount}
+          </Text>
+        </View>
       </View>
 
       {unsyncedCount > 0 && (
@@ -151,12 +171,7 @@ const TripListScreen = ({navigation}) => {
 
       {trips.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No trip logs yet</Text>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => navigation.navigate('TripForm')}>
-            <Text style={styles.addButtonText}>Log First Trip</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyText}>No pending delivey trip logs</Text>
         </View>
       ) : (
         <FlatList
@@ -169,11 +184,20 @@ const TripListScreen = ({navigation}) => {
           }
         />
       )}
-
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('TripForm')}>
         <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.fab3}
+          onPress={handleUserManagement}>
+        <Text style={styles.fab3Text}>🔑</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.fab2}
+         onPress={handleLogout}>
+        <Text style={styles.fab2Text}>↩️</Text>
       </TouchableOpacity>
     </View>
   );
@@ -186,9 +210,18 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#fff',
-    padding: 20,
+    padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  createdBy: {
+    marginTop: 5,
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: '#666',
   },
   title: {
     fontSize: 24,
@@ -319,21 +352,47 @@ const styles = StyleSheet.create({
     color: '#999',
     marginBottom: 20,
   },
-  addButton: {
-    backgroundColor: '#1FCFFF',
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 20,
+    bottom: 200,
+    backgroundColor: '#00c611ff',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  fab2: {
+    position: 'absolute',
+    right: 20,
+    bottom: 60,
+    backgroundColor: '#7aa2aaff',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  fab2Text: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  fab3: {
+    position: 'absolute',
+    right: 20,
+    bottom: 130,
     backgroundColor: '#1FCFFF',
     width: 60,
     height: 60,
@@ -345,6 +404,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+  },
+  fab3Text: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
   },
   fabText: {
     color: '#fff',

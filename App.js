@@ -6,6 +6,9 @@ import {initDatabase} from './src/database/db';
 import {startAutoSync} from './src/services/syncService';
 import TripFormScreen from './src/screens/TripFormScreen';
 import TripListScreen from './src/screens/TripListScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import RegisterScreen from './src/screens/RegisterScreen';
+import UserManagementScreen from './src/screens/UserManagementScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,7 +23,6 @@ export default function App() {
         setIsReady(true);
         
         const cleanup = startAutoSync();
-        
         return cleanup;
       } catch (error) {
         console.error('Initialization error:', error);
@@ -29,7 +31,6 @@ export default function App() {
     };
 
     const cleanup = initialize();
-    
     return () => {
       if (cleanup && typeof cleanup.then === 'function') {
         cleanup.then(fn => fn && fn());
@@ -48,26 +49,34 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="TripList"
+        initialRouteName="Login" // <- start with Login screen
         screenOptions={{
-          headerStyle: {
-            backgroundColor: '#1FCFFF',
-          },
+          headerStyle: { backgroundColor: '#1FCFFF' },
           headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}>
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      >
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Register"
+          component={RegisterScreen}
+          options={{ title: 'Register Account' }}
+        />
         <Stack.Screen
           name="TripList"
           component={TripListScreen}
-          options={{title: 'Betafoam Logistics'}}
+          options={{ title: 'Betafoam Logistics' }}
         />
         <Stack.Screen
           name="TripForm"
           component={TripFormScreen}
-          options={{title: 'Log Trip'}}
+          options={{ title: 'Log Trip' }}
         />
+        <Stack.Screen name="Accounts" component={UserManagementScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -78,6 +87,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
 });

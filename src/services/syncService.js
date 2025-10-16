@@ -31,6 +31,7 @@ export const checkAndSync = async () => {
       end_time: log.end_time,
       remarks: log.remarks,
       created_at: log.created_at,
+      created_by: log.created_by, // ✅ Added this line!
     }));
 
     const result = await syncTripsToGoogleSheets(tripsToSync);

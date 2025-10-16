@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import DateTimePickerModal from 'react-native-modal-datetime-picker'; // Updated import
-import { addTripLog } from '../database/db';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import { addTripLog, getCurrentUser } from '../database/db';
 
 const TripFormScreen = ({ navigation }) => {
+  const [currentUser, setCurrentUser] = useState(null);
   const [formData, setFormData] = useState({
     driver_name: '',
     truck_plate: '',
@@ -27,6 +28,39 @@ const TripFormScreen = ({ navigation }) => {
 
   const [isStartPickerVisible, setStartPickerVisible] = useState(false);
   const [isEndPickerVisible, setEndPickerVisible] = useState(false);
+
+  // Load current user on mount
+  useEffect(() => {
+    const loadCurrentUser = async () => {
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+        } else {
+          Alert.alert('Error', 'No user logged in');
+          navigation.navigate('Login');
+        }
+      } catch (error) {
+        console.error('Load current user error:', error);
+      }
+    };
+    loadCurrentUser();
+  }, []);
+
+  // Format user's full name with middle initial
+  const getFormattedUserName = () => {
+    if (!currentUser) return '';
+    
+    const firstName = currentUser.first_name || '';
+    const middleName = currentUser.middle_name || '';
+    const lastName = currentUser.last_name || '';
+    
+    // Get middle initial
+    const middleInitial = middleName ? middleName.charAt(0).toUpperCase() + '.' : '';
+    
+    // Format: "Kevin Rey S. Talisic"
+    return `${firstName} ${middleInitial} ${lastName}`.trim();
+  };
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -63,6 +97,11 @@ const TripFormScreen = ({ navigation }) => {
       return;
     }
 
+    if (!currentUser) {
+      Alert.alert('Error', 'No user logged in');
+      return;
+    }
+
     try {
       await addTripLog({
         driver_name: formData.driver_name,
@@ -72,9 +111,10 @@ const TripFormScreen = ({ navigation }) => {
         start_time: formatDateTime(startTime),
         end_time: formatDateTime(endTime),
         remarks: formData.remarks,
-        created_at: new Date().toISOString(),
+        created_by: getFormattedUserName(), // Add the logged-in user's name
+        created_at: formatDateTime(new Date()),
       });
-      Alert.alert('Success', 'Trip log form saved successfully', [
+      Alert.alert('Success', 'Trip log saved successfully', [
         {
           text: 'OK',
           onPress: () => {
@@ -91,6 +131,7 @@ const TripFormScreen = ({ navigation }) => {
         },
       ]);
     } catch (error) {
+      console.error('Submit error:', error);
       Alert.alert('Error', error.message || 'Failed to save trip log');
     }
   };
@@ -109,6 +150,12 @@ const TripFormScreen = ({ navigation }) => {
         <Text style={styles.subtitle}>
           Save offline, syncs automatically when online
         </Text>
+        
+        {currentUser && (
+          <Text style={styles.userInfo}>
+            📝 Logged by: {getFormattedUserName()}
+          </Text>
+        )}
 
         <View style={styles.form}>
           {/* Driver Name */}
@@ -143,17 +190,6 @@ const TripFormScreen = ({ navigation }) => {
             onChangeText={(value) => handleChange('from_location', value)}
           />
 
-          {/* To Location */}
-          <Text style={styles.label}>
-            To Location <Text style={styles.required}>*</Text>
-          </Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Destination"
-            value={formData.to_location}
-            onChangeText={(value) => handleChange('to_location', value)}
-          />
-
           {/* Start Time */}
           <Text style={styles.label}>
             Start Time <Text style={styles.required}>*</Text>
@@ -170,6 +206,17 @@ const TripFormScreen = ({ navigation }) => {
             date={startTime}
             onConfirm={handleStartConfirm}
             onCancel={() => setStartPickerVisible(false)}
+          />
+
+          {/* To Location */}
+          <Text style={styles.label}>
+            To Location <Text style={styles.required}>*</Text>
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Destination"
+            value={formData.to_location}
+            onChangeText={(value) => handleChange('to_location', value)}
           />
 
           {/* End Time */}
@@ -236,7 +283,13 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 20,
+    marginBottom: 10,
+  },
+  userInfo: {
+    fontSize: 13,
+    color: '#1FCFFF',
+    fontWeight: '600',
+    marginBottom: 15,
   },
   form: {
     backgroundColor: '#fff',
