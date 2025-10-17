@@ -1,9 +1,19 @@
 import * as Network from 'expo-network';
-import {getUnsyncedTripLogs, deleteTripLog} from '../database/db';
+import {getUnsyncedTripLogs, markTripAsSynced} from '../database/db';
 import {syncTripsToGoogleSheets} from '../api/tripApi';
 
+let isSyncing = false;
+
 export const checkAndSync = async () => {
+  // Prevent concurrent syncs
+  if (isSyncing) {
+    console.log('Sync already in progress, skipping...');
+    return {success: false, message: 'Sync already in progress'};
+  }
+
   try {
+    isSyncing = true; // Lock the sync
+    
     const networkState = await Network.getNetworkStateAsync();
     
     console.log('Network State:', networkState);
@@ -31,14 +41,14 @@ export const checkAndSync = async () => {
       end_time: log.end_time,
       remarks: log.remarks,
       created_at: log.created_at,
-      created_by: log.created_by, // ✅ Added this line!
+      created_by: log.created_by,
     }));
 
     const result = await syncTripsToGoogleSheets(tripsToSync);
 
     if (result.success) {
       for (const log of unsyncedLogs) {
-        await deleteTripLog(log.id);
+        await markTripAsSynced(log.id);
       }
       
       return {
@@ -53,6 +63,8 @@ export const checkAndSync = async () => {
   } catch (error) {
     console.error('Sync service error:', error);
     return {success: false, message: error.message};
+  } finally {
+    isSyncing = false; // Unlock the sync
   }
 };
 

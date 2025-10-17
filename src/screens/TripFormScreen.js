@@ -11,10 +11,13 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import { addTripLog, getCurrentUser } from '../database/db';
+import { addTripLog, saveDraftTripLog, updateTripLog, markAsReadyToSync, getCurrentUser } from '../database/db';
 
-const TripFormScreen = ({ navigation }) => {
+const TripFormScreen = ({ navigation, route }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingDraftId, setEditingDraftId] = useState(null);
+  
   const [formData, setFormData] = useState({
     driver_name: '',
     truck_plate: '',
@@ -25,11 +28,9 @@ const TripFormScreen = ({ navigation }) => {
 
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
-
   const [isStartPickerVisible, setStartPickerVisible] = useState(false);
   const [isEndPickerVisible, setEndPickerVisible] = useState(false);
 
-  // Load current user on mount
   useEffect(() => {
     const loadCurrentUser = async () => {
       try {
@@ -45,20 +46,36 @@ const TripFormScreen = ({ navigation }) => {
       }
     };
     loadCurrentUser();
-  }, []);
 
-  // Format user's full name with middle initial
+    // Check if we're editing a draft
+    if (route.params?.draftToEdit) {
+      const draft = route.params.draftToEdit;
+      setIsEditMode(true);
+      setEditingDraftId(draft.id);
+      
+      setFormData({
+        driver_name: draft.driver_name || '',
+        truck_plate: draft.truck_plate || '',
+        from_location: draft.from_location || '',
+        to_location: draft.to_location || '',
+        remarks: draft.remarks || '',
+      });
+
+      if (draft.start_time) {
+        setStartTime(new Date(draft.start_time));
+      }
+      if (draft.end_time) {
+        setEndTime(new Date(draft.end_time));
+      }
+    }
+  }, [route.params]);
+
   const getFormattedUserName = () => {
     if (!currentUser) return '';
-    
     const firstName = currentUser.first_name || '';
     const middleName = currentUser.middle_name || '';
     const lastName = currentUser.last_name || '';
-    
-    // Get middle initial
     const middleInitial = middleName ? middleName.charAt(0).toUpperCase() + '.' : '';
-    
-    // Format: "Kevin Rey S. Talisic"
     return `${firstName} ${middleInitial} ${lastName}`.trim();
   };
 
@@ -86,9 +103,85 @@ const TripFormScreen = ({ navigation }) => {
     setEndPickerVisible(false);
   };
 
-  const handleSubmit = async () => {
+  const resetForm = () => {
+    setFormData({
+      driver_name: '',
+      truck_plate: '',
+      from_location: '',
+      to_location: '',
+      remarks: '',
+    });
+    setStartTime(new Date());
+    setEndTime(new Date());
+    setIsEditMode(false);
+    setEditingDraftId(null);
+  };
+
+  // Save as Draft (partial data allowed)
+  const handleSaveDraft = async () => {
+    if (!formData.driver_name || !formData.from_location) {
+      Alert.alert('Error', 'Please fill in Driver Name and From Location at minimum');
+      return;
+    }
+
+    if (!currentUser) {
+      Alert.alert('Error', 'No user logged in');
+      return;
+    }
+
+    try {
+      if (isEditMode && editingDraftId) {
+        // Update existing draft
+        await updateTripLog(editingDraftId, {
+          driver_name: formData.driver_name,
+          truck_plate: formData.truck_plate,
+          from_location: formData.from_location,
+          to_location: formData.to_location,
+          start_time: formatDateTime(startTime),
+          end_time: formData.to_location ? formatDateTime(endTime) : null,
+          remarks: formData.remarks,
+        });
+        
+        Alert.alert('Success', 'Draft updated successfully!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              resetForm();
+              navigation.goBack();
+            },
+          },
+        ]);
+      } else {
+        // Create new draft
+        await saveDraftTripLog({
+          driver_name: formData.driver_name,
+          truck_plate: formData.truck_plate,
+          from_location: formData.from_location,
+          to_location: formData.to_location,
+          start_time: formatDateTime(startTime),
+          end_time: formData.to_location ? formatDateTime(endTime) : null,
+          remarks: formData.remarks,
+          created_by: getFormattedUserName(),
+          created_at: formatDateTime(new Date()),
+        });
+        
+        Alert.alert('Success', 'Trip log saved as draft. You can complete it later.', [
+          {
+            text: 'OK',
+            onPress: () => resetForm(),
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('Save draft error:', error);
+      Alert.alert('Error', error.message || 'Failed to save draft');
+    }
+  };
+
+  // Sync (finalize - all fields required)
+  const handleSync = async () => {
     if (!formData.driver_name || !formData.from_location || !formData.to_location) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert('Error', 'Please fill in all required fields to sync');
       return;
     }
 
@@ -103,37 +196,73 @@ const TripFormScreen = ({ navigation }) => {
     }
 
     try {
-      await addTripLog({
-        driver_name: formData.driver_name,
-        truck_plate: formData.truck_plate,
-        from_location: formData.from_location,
-        to_location: formData.to_location,
-        start_time: formatDateTime(startTime),
-        end_time: formatDateTime(endTime),
-        remarks: formData.remarks,
-        created_by: getFormattedUserName(), // Add the logged-in user's name
-        created_at: formatDateTime(new Date()),
-      });
-      Alert.alert('Success', 'Trip log saved successfully', [
+      if (isEditMode && editingDraftId) {
+        // Update the draft and mark as ready to sync
+        await updateTripLog(editingDraftId, {
+          driver_name: formData.driver_name,
+          truck_plate: formData.truck_plate,
+          from_location: formData.from_location,
+          to_location: formData.to_location,
+          start_time: formatDateTime(startTime),
+          end_time: formatDateTime(endTime),
+          remarks: formData.remarks,
+        });
+        
+        // Mark as ready to sync (synced = 0)
+        await markAsReadyToSync(editingDraftId);
+        
+        Alert.alert('Success', 'Draft finalized and ready to sync!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              resetForm();
+              navigation.goBack();
+            },
+          },
+        ]);
+      } else {
+        // Create new trip ready to sync
+        await addTripLog({
+          driver_name: formData.driver_name,
+          truck_plate: formData.truck_plate,
+          from_location: formData.from_location,
+          to_location: formData.to_location,
+          start_time: formatDateTime(startTime),
+          end_time: formatDateTime(endTime),
+          remarks: formData.remarks,
+          created_by: getFormattedUserName(),
+          created_at: formatDateTime(new Date()),
+        });
+        
+        Alert.alert('Success', 'Trip log ready to sync!', [
+          {
+            text: 'OK',
+            onPress: () => resetForm(),
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      Alert.alert('Error', error.message || 'Failed to prepare for sync');
+    }
+  };
+
+  const handleCancel = () => {
+    Alert.alert(
+      'Cancel Editing',
+      'Are you sure you want to cancel? Changes will not be saved.',
+      [
+        { text: 'Keep Editing', style: 'cancel' },
         {
-          text: 'OK',
+          text: 'Cancel',
+          style: 'destructive',
           onPress: () => {
-            setFormData({
-              driver_name: '',
-              truck_plate: '',
-              from_location: '',
-              to_location: '',
-              remarks: '',
-            });
-            setStartTime(new Date());
-            setEndTime(new Date());
+            resetForm();
+            navigation.goBack();
           },
         },
-      ]);
-    } catch (error) {
-      console.error('Submit error:', error);
-      Alert.alert('Error', error.message || 'Failed to save trip log');
-    }
+      ]
+    );
   };
 
   return (
@@ -146,9 +275,11 @@ const TripFormScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Log Delivery Trip</Text>
+        <Text style={styles.title}>
+          {isEditMode ? '✏️ Edit Draft' : 'Log Delivery Trip'}
+        </Text>
         <Text style={styles.subtitle}>
-          Save offline, syncs automatically when online
+          {isEditMode ? 'Update and save your draft' : 'Save as draft or finalize to sync'}
         </Text>
         
         {currentUser && (
@@ -158,7 +289,6 @@ const TripFormScreen = ({ navigation }) => {
         )}
 
         <View style={styles.form}>
-          {/* Driver Name */}
           <Text style={styles.label}>
             Driver Name <Text style={styles.required}>*</Text>
           </Text>
@@ -169,7 +299,6 @@ const TripFormScreen = ({ navigation }) => {
             onChangeText={(value) => handleChange('driver_name', value)}
           />
 
-          {/* Truck Plate */}
           <Text style={styles.label}>Truck Plate Number</Text>
           <TextInput
             style={styles.input}
@@ -179,7 +308,6 @@ const TripFormScreen = ({ navigation }) => {
             autoCapitalize="characters"
           />
 
-          {/* From Location */}
           <Text style={styles.label}>
             From Location <Text style={styles.required}>*</Text>
           </Text>
@@ -190,7 +318,6 @@ const TripFormScreen = ({ navigation }) => {
             onChangeText={(value) => handleChange('from_location', value)}
           />
 
-          {/* Start Time */}
           <Text style={styles.label}>
             Start Time <Text style={styles.required}>*</Text>
           </Text>
@@ -208,9 +335,8 @@ const TripFormScreen = ({ navigation }) => {
             onCancel={() => setStartPickerVisible(false)}
           />
 
-          {/* To Location */}
           <Text style={styles.label}>
-            To Location <Text style={styles.required}>*</Text>
+            To Location <Text style={styles.required}>* (for sync)</Text>
           </Text>
           <TextInput
             style={styles.input}
@@ -219,9 +345,8 @@ const TripFormScreen = ({ navigation }) => {
             onChangeText={(value) => handleChange('to_location', value)}
           />
 
-          {/* End Time */}
           <Text style={styles.label}>
-            End Time <Text style={styles.required}>*</Text>
+            End Time <Text style={styles.required}>* (for sync)</Text>
           </Text>
           <TouchableOpacity
             style={styles.dateButton}
@@ -237,7 +362,6 @@ const TripFormScreen = ({ navigation }) => {
             onCancel={() => setEndPickerVisible(false)}
           />
 
-          {/* Remarks */}
           <Text style={styles.label}>Remarks (Optional)</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -248,17 +372,35 @@ const TripFormScreen = ({ navigation }) => {
             numberOfLines={3}
           />
 
-          {/* Buttons */}
-          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-            <Text style={styles.buttonText}>Save Trip Log</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.draftButton} onPress={handleSaveDraft}>
+              <Text style={styles.buttonText}>
+                {isEditMode ? '📝 Update' : '📝 Draft'}
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('TripList')}
-          >
-            <Text style={styles.secondaryButtonText}>View All Trips</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.syncButton} onPress={handleSync}>
+              <Text style={styles.buttonText}>
+                {isEditMode ? '💾 Save' : '💾 Save'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {isEditMode ? (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancel}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => navigation.navigate('TripList')}
+            >
+              <Text style={styles.secondaryButtonText}>View All Trips</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -286,10 +428,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   userInfo: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#1FCFFF',
+    marginBottom: 20,
     fontWeight: '600',
-    marginBottom: 15,
   },
   form: {
     backgroundColor: '#fff',
@@ -335,12 +477,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  button: {
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 25,
+  },
+  draftButton: {
+    flex: 1,
+    backgroundColor: '#84827dff',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  syncButton: {
+    flex: 1,
     backgroundColor: '#1FCFFF',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 25,
   },
   buttonText: {
     color: '#fff',
@@ -358,6 +512,20 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: '#1FCFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#ff6b6b',
+  },
+  cancelButtonText: {
+    color: '#ff6b6b',
     fontSize: 16,
     fontWeight: '600',
   },

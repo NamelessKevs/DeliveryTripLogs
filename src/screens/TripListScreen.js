@@ -9,7 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import {getAllTripLogs} from '../database/db';
+import {getAllTripLogs, deleteTripLog} from '../database/db';
 import {checkAndSync} from '../services/syncService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -61,8 +61,35 @@ const TripListScreen = ({navigation}) => {
     }
   };
 
+  const handleEditDraft = (item) => {
+    navigation.navigate('TripForm', { draftToEdit: item });
+  };
+
+  const handleDeleteDraft = (item) => {
+    Alert.alert(
+      'Delete Draft',
+      'Are you sure you want to delete this draft?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteTripLog(item.id);
+              Alert.alert('Success', 'Draft deleted');
+              await loadTrips();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete draft');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleLogout = async () => {
-    await AsyncStorage.removeItem('currentUser');
+    await AsyncStorage.removeItem('current_user');
     navigation.reset({
       index: 0,
       routes: [{name: 'Login'}],
@@ -70,11 +97,11 @@ const TripListScreen = ({navigation}) => {
   };
 
   const handleUserManagement = () => {
-    navigation.navigate('Accounts'); // Make sure you add this screen in App.js
+    navigation.navigate('Accounts');
   };
 
   const formatDateTime = (dateStr) => {
-    if (!dateStr) return '';
+    if (!dateStr) return 'N/A';
     try {
       const date = new Date(dateStr);
       return date.toLocaleString('en-US', {
@@ -88,57 +115,92 @@ const TripListScreen = ({navigation}) => {
     }
   };
 
-  const renderTrip = ({item}) => (
-    <View style={styles.tripCard}>
-      <View style={styles.tripHeader}>
-        <Text style={styles.driverName}>{item.driver_name}</Text>
-        <View style={[
-          styles.badge,
-          item.synced ? styles.syncedBadge : styles.unsyncedBadge
-        ]}>
-          <Text style={styles.badgeText}>
-            {item.synced ? 'Synced' : 'Pending'}
-          </Text>
+  const getStatusBadge = (item) => {
+    if (item.synced === 1) {
+      return { text: 'Synced', style: styles.syncedBadge };
+    } else if (item.synced === 0) {
+      return { text: 'Pending', style: styles.unsyncedBadge };
+    } else {
+      return { text: 'Draft', style: styles.draftBadge };
+    }
+  };
+
+  const renderTrip = ({item}) => {
+    const badge = getStatusBadge(item);
+    const isDraft = item.synced === -1;
+    
+    return (
+      <View style={styles.tripCard}>
+        <View style={styles.tripHeader}>
+          <Text style={styles.driverName}>{item.driver_name}</Text>
+          <View style={[styles.badge, badge.style]}>
+            <Text style={styles.badgeText}>{badge.text}</Text>
+          </View>
         </View>
+        
+        {item.truck_plate && (
+          <Text style={styles.truckPlate}>🚚 {item.truck_plate}</Text>
+        )}
+        
+        <View style={styles.routeContainer}>
+          <View style={styles.locationRow}>
+            <Text style={styles.locationLabel}>From:</Text>
+            <Text style={styles.locationText}>{item.from_location || 'N/A'}</Text>
+          </View>
+          {item.to_location && (
+            <>
+              <Text style={styles.arrow}>↓</Text>
+              <View style={styles.locationRow}>
+                <Text style={styles.locationLabel}>To:</Text>
+                <Text style={styles.locationText}>{item.to_location}</Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        <View style={styles.timeContainer}>
+          <View style={styles.timeRow}>
+            <Text style={styles.timeLabel}>Start:</Text>
+            <Text style={styles.timeText}>{formatDateTime(item.start_time)}</Text>
+          </View>
+          {item.end_time && (
+            <View style={styles.timeRow}>
+              <Text style={styles.timeLabel}>End:</Text>
+              <Text style={styles.timeText}>{formatDateTime(item.end_time)}</Text>
+            </View>
+          )}
+        </View>
+
+        {item.remarks && (
+          <Text style={styles.remarks}>📝 {item.remarks}</Text>
+        )}
+
+        {item.created_by && (
+          <Text style={styles.createdBy}>👤 {item.created_by}</Text>
+        )}
+
+        {/* Edit and Delete buttons for drafts */}
+        {isDraft && (
+          <View style={styles.draftActions}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => handleEditDraft(item)}
+            >
+              <Text style={styles.editButtonText}>✏️ Edit Draft</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handleDeleteDraft(item)}
+            >
+              <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-      
-      {item.truck_plate && (
-        <Text style={styles.truckPlate}>🚚 {item.truck_plate}</Text>
-      )}
-      
-      <View style={styles.routeContainer}>
-        <View style={styles.locationRow}>
-          <Text style={styles.locationLabel}>From:</Text>
-          <Text style={styles.locationText}>{item.from_location}</Text>
-        </View>
-        <Text style={styles.arrow}>↓</Text>
-        <View style={styles.locationRow}>
-          <Text style={styles.locationLabel}>To:</Text>
-          <Text style={styles.locationText}>{item.to_location}</Text>
-        </View>
-      </View>
+    );
+  };
 
-      <View style={styles.timeContainer}>
-        <View style={styles.timeRow}>
-          <Text style={styles.timeLabel}>Start:</Text>
-          <Text style={styles.timeText}>{formatDateTime(item.start_time)}</Text>
-        </View>
-        <View style={styles.timeRow}>
-          <Text style={styles.timeLabel}>End:</Text>
-          <Text style={styles.timeText}>{formatDateTime(item.end_time)}</Text>
-        </View>
-      </View>
-
-      {item.remarks && (
-        <Text style={styles.remarks}>📝 {item.remarks}</Text>
-      )}
-
-      {item.created_by && (
-        <Text style={styles.createdBy}>👤 {item.created_by}</Text>
-      )}
-    </View>
-  );
-
+  const draftCount = trips.filter(t => t.synced === -1).length;
   const unsyncedCount = trips.filter(t => t.synced === 0).length;
 
   return (
@@ -149,7 +211,7 @@ const TripListScreen = ({navigation}) => {
         </View>
         <View>
           <Text style={styles.count}>
-            Total: {trips.length} | Pending: {unsyncedCount}
+            Total: {trips.length} | Drafts: {draftCount} | Pending: {unsyncedCount}
           </Text>
         </View>
       </View>
@@ -171,7 +233,7 @@ const TripListScreen = ({navigation}) => {
 
       {trips.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No pending delivey trip logs</Text>
+          <Text style={styles.emptyText}>No delivery trip logs</Text>
         </View>
       ) : (
         <FlatList
@@ -184,6 +246,7 @@ const TripListScreen = ({navigation}) => {
           }
         />
       )}
+
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('TripForm')}>
@@ -191,12 +254,12 @@ const TripListScreen = ({navigation}) => {
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.fab3}
-          onPress={handleUserManagement}>
+        onPress={handleUserManagement}>
         <Text style={styles.fab3Text}>🔑</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.fab2}
-         onPress={handleLogout}>
+        onPress={handleLogout}>
         <Text style={styles.fab2Text}>↩️</Text>
       </TouchableOpacity>
     </View>
@@ -210,18 +273,9 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#fff',
-    padding: 15,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  createdBy: {
-    marginTop: 5,
-    fontSize: 12,
-    fontStyle: 'italic',
-    color: '#666',
   },
   title: {
     fontSize: 24,
@@ -280,6 +334,9 @@ const styles = StyleSheet.create({
   },
   unsyncedBadge: {
     backgroundColor: '#fff3cd',
+  },
+  draftBadge: {
+    backgroundColor: '#f8d7da',
   },
   badgeText: {
     fontSize: 11,
@@ -341,6 +398,44 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontStyle: 'italic',
   },
+  createdBy: {
+    fontSize: 12,
+    color: '#1FCFFF',
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  draftActions: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  editButton: {
+    flex: 1,
+    backgroundColor: '#1FCFFF',
+    padding: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#ff6b6b',
+    padding: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -356,7 +451,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 20,
     bottom: 200,
-    backgroundColor: '#00c611ff',
+    backgroundColor: '#10dc17ff',
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -368,14 +463,19 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  fabText: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: '300',
+  },
   fab2: {
     position: 'absolute',
     right: 20,
     bottom: 60,
     backgroundColor: '#7aa2aaff',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -385,18 +485,16 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   fab2Text: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 24,
   },
   fab3: {
     position: 'absolute',
     right: 20,
     bottom: 130,
     backgroundColor: '#1FCFFF',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -406,14 +504,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   fab3Text: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  fabText: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '300',
+    fontSize: 24,
   },
 });
 

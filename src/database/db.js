@@ -20,16 +20,16 @@ export const initDatabase = async () => {
   try {
     db = await SQLite.openDatabaseAsync('DeliveryTripLogs.db');
 
-    // Trip Logs Table
+    // Trip Logs Table - FIXED: Allow NULL for draft fields
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS trip_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         driver_name TEXT NOT NULL,
         truck_plate TEXT,
         from_location TEXT NOT NULL,
-        to_location TEXT NOT NULL,
-        start_time TEXT NOT NULL,
-        end_time TEXT NOT NULL,
+        to_location TEXT,
+        start_time TEXT,
+        end_time TEXT,
         remarks TEXT,
         created_by TEXT NOT NULL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -70,8 +70,7 @@ export const getLocalTimestamp = () => {
 // ---------------------
 export const addTripLog = async (tripLog) => {
   try {
-    const database = ensureDbInitialized();
-    const result = await database.runAsync(
+    const result = await db.runAsync(
       `INSERT INTO trip_logs 
         (driver_name, truck_plate, from_location, to_location, start_time, end_time, remarks, created_by, created_at, synced)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
@@ -94,10 +93,96 @@ export const addTripLog = async (tripLog) => {
   }
 };
 
-export const getAllTripLogs = async () => {
+// Save as draft (synced = -1)
+export const saveDraftTripLog = async (tripLog) => {
   try {
     const database = ensureDbInitialized();
-    const logs = await database.getAllAsync('SELECT * FROM trip_logs ORDER BY id DESC');
+    const result = await database.runAsync(
+      `INSERT INTO trip_logs 
+        (driver_name, truck_plate, from_location, to_location, start_time, end_time, remarks, created_by, created_at, synced)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, -1)`,
+      [
+        tripLog.driver_name,
+        tripLog.truck_plate || null,
+        tripLog.from_location || null,
+        tripLog.to_location || null,
+        tripLog.start_time || null,
+        tripLog.end_time || null,
+        tripLog.remarks || null,
+        tripLog.created_by,
+        tripLog.created_at || getLocalTimestamp(),
+      ]
+    );
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error('Save draft log error:', error);
+    throw error;
+  }
+};
+
+// Update existing trip log
+export const updateTripLog = async (id, tripLog) => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync(
+      `UPDATE trip_logs 
+       SET driver_name = ?, truck_plate = ?, from_location = ?, to_location = ?, 
+           start_time = ?, end_time = ?, remarks = ?
+       WHERE id = ?`,
+      [
+        tripLog.driver_name,
+        tripLog.truck_plate || null,
+        tripLog.from_location || null,
+        tripLog.to_location || null,
+        tripLog.start_time || null,
+        tripLog.end_time || null,
+        tripLog.remarks || null,
+        id,
+      ]
+    );
+  } catch (error) {
+    console.error('Update trip log error:', error);
+    throw error;
+  }
+};
+
+// Mark draft as ready to sync (synced = 0)
+export const markAsReadyToSync = async (id) => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync('UPDATE trip_logs SET synced = 0 WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Mark ready to sync error:', error);
+    throw error;
+  }
+};
+
+// Mark trip as synced (synced = 1)
+export const markTripAsSynced = async (id) => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync('UPDATE trip_logs SET synced = 1 WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Mark as synced error:', error);
+    throw error;
+  }
+};
+
+// Get draft trip logs
+export const getDraftTripLogs = async () => {
+  try {
+    const database = ensureDbInitialized();
+    const logs = await database.getAllAsync('SELECT * FROM trip_logs WHERE synced = -1');
+    return logs;
+  } catch (error) {
+    console.error('Get draft logs error:', error);
+    return [];
+  }
+};
+
+export const getAllTripLogs = async () => {
+  try {
+    const logs = await db.getAllAsync('SELECT * FROM trip_logs ORDER BY id DESC');
     return logs;
   } catch (error) {
     console.error('Get all logs error:', error);
@@ -107,8 +192,7 @@ export const getAllTripLogs = async () => {
 
 export const getUnsyncedTripLogs = async () => {
   try {
-    const database = ensureDbInitialized();
-    const logs = await database.getAllAsync('SELECT * FROM trip_logs WHERE synced = 0');
+    const logs = await db.getAllAsync('SELECT * FROM trip_logs WHERE synced = 0');
     return logs;
   } catch (error) {
     console.error('Get unsynced logs error:', error);
@@ -118,8 +202,7 @@ export const getUnsyncedTripLogs = async () => {
 
 export const deleteTripLog = async (id) => {
   try {
-    const database = ensureDbInitialized();
-    await database.runAsync('DELETE FROM trip_logs WHERE id = ?', [id]);
+    await db.runAsync('DELETE FROM trip_logs WHERE id = ?', [id]);
   } catch (error) {
     console.error('Delete log error:', error);
   }
@@ -130,8 +213,7 @@ export const deleteTripLog = async (id) => {
 // ---------------------
 export const registerUser = async (user) => {
   try {
-    const database = ensureDbInitialized();
-    const result = await database.runAsync(
+    const result = await db.runAsync(
       `INSERT INTO users (first_name, middle_name, last_name, username, password)
        VALUES (?, ?, ?, ?, ?)`,
       [
@@ -151,8 +233,7 @@ export const registerUser = async (user) => {
 
 export const loginUser = async (username, password) => {
   try {
-    const database = ensureDbInitialized();
-    const result = await database.getAllAsync(
+    const result = await db.getAllAsync(
       'SELECT * FROM users WHERE username = ? AND password = ?',
       [username, password]
     );
@@ -165,8 +246,7 @@ export const loginUser = async (username, password) => {
 
 export const getAllUsers = async () => {
   try {
-    const database = ensureDbInitialized();
-    const users = await database.getAllAsync('SELECT * FROM users ORDER BY id DESC');
+    const users = await db.getAllAsync('SELECT * FROM users ORDER BY id DESC');
     return users;
   } catch (error) {
     console.error('Get all users error:', error);
@@ -174,31 +254,27 @@ export const getAllUsers = async () => {
   }
 };
 
-// Add these functions to your db.js in the Users Functions section
-
 export const updateUser = async (id, user) => {
   try {
-    const database = ensureDbInitialized();
-    
-    // Build the update query dynamically based on what fields are provided
-    let query = 'UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, username = ?';
+    // Build update query dynamically to handle optional password
+    let query = `UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, username = ?`;
     let params = [
       user.first_name,
       user.middle_name || null,
       user.last_name,
       user.username,
     ];
-    
-    // Only update password if it's provided
+
+    // Only update password if provided
     if (user.password) {
-      query += ', password = ?';
+      query += `, password = ?`;
       params.push(user.password);
     }
-    
-    query += ' WHERE id = ?';
+
+    query += ` WHERE id = ?`;
     params.push(id);
-    
-    await database.runAsync(query, params);
+
+    await db.runAsync(query, params);
   } catch (error) {
     console.error('Update user error:', error);
     throw error;
@@ -207,8 +283,7 @@ export const updateUser = async (id, user) => {
 
 export const deleteUser = async (id) => {
   try {
-    const database = ensureDbInitialized();
-    await database.runAsync('DELETE FROM users WHERE id = ?', [id]);
+    await db.runAsync('DELETE FROM users WHERE id = ?', [id]);
   } catch (error) {
     console.error('Delete user error:', error);
     throw error;
