@@ -37,7 +37,7 @@ export const initDatabase = async () => {
       );
     `);
 
-    // Users Table
+    // Users Table Creation
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
