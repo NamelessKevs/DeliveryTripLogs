@@ -20,24 +20,53 @@ export const initDatabase = async () => {
   try {
     db = await SQLite.openDatabaseAsync('DeliveryTripLogs.db');
 
-    // Trip Logs Table - FIXED: Allow NULL for draft fields
+    console.log('🚀 Refreshing database tables...');
+
+    // Drop all existing tables (force recreate)
     await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS trip_logs (
+      DROP TABLE IF EXISTS cached_deliveries;
+      DROP TABLE IF EXISTS trip_logs;
+      DROP TABLE IF EXISTS users;
+    `);
+
+    // Recreate tables fresh
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS cached_deliveries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        delivery_id TEXT UNIQUE NOT NULL,
         driver_name TEXT NOT NULL,
+        helper TEXT,
         truck_plate TEXT,
-        from_location TEXT NOT NULL,
-        to_location TEXT,
-        start_time TEXT,
-        end_time TEXT,
-        remarks TEXT,
-        created_by TEXT NOT NULL,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        synced INTEGER DEFAULT 0
+        trip TEXT,
+        delivery_date TEXT NOT NULL,
+        customers_json TEXT NOT NULL,
+        cached_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // Users Table Creation
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS trip_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        delivery_id TEXT NOT NULL,
+        driver_name TEXT NOT NULL,
+        helper TEXT,
+        truck_plate TEXT,
+        trip TEXT,
+        drop_number INTEGER NOT NULL,
+        company_departure TEXT,
+        company_arrival TEXT,
+        customer TEXT,
+        address TEXT,
+        customer_arrival TEXT,
+        customer_departure TEXT,
+        remarks TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        created_by TEXT NOT NULL,
+        synced INTEGER DEFAULT 0,
+        sync_status TEXT DEFAULT 'no'
+      );
+    `);
+
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,10 +78,10 @@ export const initDatabase = async () => {
       );
     `);
 
-    console.log('Database initialized');
+    console.log('✅ Database fully reset and recreated!');
     return db;
   } catch (error) {
-    console.error('Database init error:', error);
+    console.error('❌ Database init error:', error);
     throw error;
   }
 };
@@ -70,20 +99,31 @@ export const getLocalTimestamp = () => {
 // ---------------------
 export const addTripLog = async (tripLog) => {
   try {
-    const result = await db.runAsync(
+    const database = ensureDbInitialized();
+    const result = await database.runAsync(
       `INSERT INTO trip_logs 
-        (driver_name, truck_plate, from_location, to_location, start_time, end_time, remarks, created_by, created_at, synced)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+        (delivery_id, driver_name, helper, truck_plate, trip, drop_number, 
+         company_departure, company_arrival, customer, address, 
+         customer_arrival, customer_departure, remarks, created_by, created_at, synced, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        tripLog.delivery_id,
         tripLog.driver_name,
+        tripLog.helper || null,
         tripLog.truck_plate || null,
-        tripLog.from_location,
-        tripLog.to_location,
-        tripLog.start_time,
-        tripLog.end_time,
+        tripLog.trip || null,
+        tripLog.drop_number,
+        tripLog.company_departure || null,
+        tripLog.company_arrival || null,
+        tripLog.customer || null,
+        tripLog.address || null,
+        tripLog.customer_arrival || null,
+        tripLog.customer_departure || null,
         tripLog.remarks || null,
         tripLog.created_by,
         tripLog.created_at || getLocalTimestamp(),
+        tripLog.synced || 0,
+        tripLog.sync_status || 'no',
       ]
     );
     return result.lastInsertRowId;
@@ -126,16 +166,24 @@ export const updateTripLog = async (id, tripLog) => {
     const database = ensureDbInitialized();
     await database.runAsync(
       `UPDATE trip_logs 
-       SET driver_name = ?, truck_plate = ?, from_location = ?, to_location = ?, 
-           start_time = ?, end_time = ?, remarks = ?
+       SET delivery_id = ?, driver_name = ?, helper = ?, truck_plate = ?, trip = ?,
+           drop_number = ?, company_departure = ?, company_arrival = ?, 
+           customer = ?, address = ?, customer_arrival = ?, customer_departure = ?,
+           remarks = ?
        WHERE id = ?`,
       [
+        tripLog.delivery_id,
         tripLog.driver_name,
+        tripLog.helper || null,
         tripLog.truck_plate || null,
-        tripLog.from_location || null,
-        tripLog.to_location || null,
-        tripLog.start_time || null,
-        tripLog.end_time || null,
+        tripLog.trip || null,
+        tripLog.drop_number,
+        tripLog.company_departure || null,
+        tripLog.company_arrival || null,
+        tripLog.customer || null,
+        tripLog.address || null,
+        tripLog.customer_arrival || null,
+        tripLog.customer_departure || null,
         tripLog.remarks || null,
         id,
       ]
@@ -143,6 +191,52 @@ export const updateTripLog = async (id, tripLog) => {
   } catch (error) {
     console.error('Update trip log error:', error);
     throw error;
+  }
+};
+
+// Get all drops for a specific delivery_id
+export const getTripLogsByDeliveryId = async (deliveryId) => {
+  try {
+    const database = ensureDbInitialized();
+    const logs = await database.getAllAsync(
+      'SELECT * FROM trip_logs WHERE delivery_id = ? ORDER BY drop_number ASC',
+      [deliveryId]
+    );
+    return logs;
+  } catch (error) {
+    console.error('Get trip logs by delivery ID error:', error);
+    return [];
+  }
+};
+
+// Update company times for all drops in a delivery
+export const updateCompanyTimes = async (deliveryId, companyDeparture, companyArrival) => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync(
+      `UPDATE trip_logs 
+       SET company_departure = ?, company_arrival = ?
+       WHERE delivery_id = ?`,
+      [companyDeparture, companyArrival, deliveryId]
+    );
+  } catch (error) {
+    console.error('Update company times error:', error);
+    throw error;
+  }
+};
+
+// Get next drop number for a delivery
+export const getNextDropNumber = async (deliveryId) => {
+  try {
+    const database = ensureDbInitialized();
+    const result = await database.getAllAsync(
+      'SELECT MAX(drop_number) as max_drop FROM trip_logs WHERE delivery_id = ?',
+      [deliveryId]
+    );
+    return (result[0]?.max_drop || 0) + 1;
+  } catch (error) {
+    console.error('Get next drop number error:', error);
+    return 1;
   }
 };
 
@@ -205,6 +299,106 @@ export const deleteTripLog = async (id) => {
     await db.runAsync('DELETE FROM trip_logs WHERE id = ?', [id]);
   } catch (error) {
     console.error('Delete log error:', error);
+  }
+};
+
+// ---------------------
+// Cached Deliveries Functions
+// ---------------------
+export const saveCachedDelivery = async (delivery) => {
+  try {
+    const database = ensureDbInitialized();
+    
+    // Parse delivery_date from delivery_id (format: 2025-10-21-NKR1046-1)
+    const deliveryDate = delivery.delivery_id.split('-').slice(0, 3).join('-');
+    
+    await database.runAsync(
+      `INSERT OR REPLACE INTO cached_deliveries 
+        (delivery_id, driver_name, helper, truck_plate, trip, delivery_date, customers_json, cached_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        delivery.delivery_id,
+        delivery.driver_name,
+        delivery.helper || null,
+        delivery.truck_plate || null,
+        delivery.trip || null,
+        deliveryDate,
+        JSON.stringify(delivery.customers || []),
+        getLocalTimestamp(),
+      ]
+    );
+  } catch (error) {
+    console.error('Save cached delivery error:', error);
+    throw error;
+  }
+};
+
+export const getCachedDeliveries = async () => {
+  try {
+    const database = ensureDbInitialized();
+    
+    // Get date range (yesterday, today, tomorrow)
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    const dateFrom = formatDate(yesterday);
+    const dateTo = formatDate(tomorrow);
+    
+    const deliveries = await database.getAllAsync(
+      `SELECT * FROM cached_deliveries 
+       WHERE delivery_date BETWEEN ? AND ?
+       ORDER BY delivery_date DESC, delivery_id DESC`,
+      [dateFrom, dateTo]
+    );
+    
+    // Parse customers_json back to array
+    return deliveries.map(d => ({
+      ...d,
+      customers: JSON.parse(d.customers_json || '[]'),
+    }));
+  } catch (error) {
+    console.error('Get cached deliveries error:', error);
+    return [];
+  }
+};
+
+export const getCachedDeliveryById = async (deliveryId) => {
+  try {
+    const database = ensureDbInitialized();
+    const result = await database.getAllAsync(
+      'SELECT * FROM cached_deliveries WHERE delivery_id = ?',
+      [deliveryId]
+    );
+    
+    if (result.length > 0) {
+      return {
+        ...result[0],
+        customers: JSON.parse(result[0].customers_json || '[]'),
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Get cached delivery by ID error:', error);
+    return null;
+  }
+};
+
+export const clearCachedDeliveries = async () => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync('DELETE FROM cached_deliveries');
+  } catch (error) {
+    console.error('Clear cached deliveries error:', error);
   }
 };
 

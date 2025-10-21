@@ -9,6 +9,8 @@ import TripListScreen from './src/screens/TripListScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import UserManagementScreen from './src/screens/UserManagementScreen';
+import LDDDataScreen from './src/screens/LDDDataScreen';
+import DeliveryFormScreen from './src/screens/DeliveryFormScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -75,6 +77,16 @@ export default function App() {
           name="TripForm"
           component={TripFormScreen}
           options={{ title: 'Log Trip' }}
+        />
+        <Stack.Screen 
+          name="LDDData" 
+          component={LDDDataScreen}
+          options={{ title: 'LDD Data (Test)' }} 
+        />
+        <Stack.Screen 
+          name="DeliveryForm" 
+          component={DeliveryFormScreen}
+          options={{ title: 'Log Delivery (New)' }} 
         />
         <Stack.Screen name="Accounts" component={UserManagementScreen} />
       </Stack.Navigator>

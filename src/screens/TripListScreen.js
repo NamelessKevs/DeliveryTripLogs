@@ -62,7 +62,7 @@ const TripListScreen = ({navigation}) => {
   };
 
   const handleEditDraft = (item) => {
-    navigation.navigate('TripForm', { draftToEdit: item });
+    navigation.navigate('DeliveryForm', { draftToEdit: item });
   };
 
   const handleDeleteDraft = (item) => {
@@ -261,6 +261,16 @@ const TripListScreen = ({navigation}) => {
         style={styles.fab2}
         onPress={handleLogout}>
         <Text style={styles.fab2Text}>↩️</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.fab4}
+        onPress={() => navigation.navigate('LDDData')}>
+        <Text style={styles.fab4Text}>📊</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.fab5}
+        onPress={() => navigation.navigate('DeliveryForm')}>
+        <Text style={styles.fab5Text}>🚚</Text>
       </TouchableOpacity>
     </View>
   );
@@ -504,6 +514,44 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   fab3Text: {
+    fontSize: 24,
+  },
+  fab4: {
+    position: 'absolute',
+    right: 20,
+    bottom: 270,
+    backgroundColor: '#ff9800',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  fab4Text: {
+    fontSize: 24,
+  },
+  fab5: {
+    position: 'absolute',
+    right: 20,
+    bottom: 340,
+    backgroundColor: '#4caf50',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  fab5Text: {
     fontSize: 24,
   },
 });
