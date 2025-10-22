@@ -1,5 +1,5 @@
 import * as Network from 'expo-network';
-import {getUnsyncedTripLogs, markTripAsSynced} from '../database/db';
+import {getUnsyncedTripLogs, markTripAsSynced, getTripLogsByDeliveryId} from '../database/db';
 import {syncTripsToGoogleSheets} from '../api/tripApi';
 
 let isSyncing = false;
@@ -33,12 +33,18 @@ export const checkAndSync = async () => {
     console.log(`Syncing ${unsyncedLogs.length} trip logs to Google Sheets...`);
 
     const tripsToSync = unsyncedLogs.map(log => ({
-      driver_name: log.driver_name,
-      truck_plate: log.truck_plate,
-      from_location: log.from_location,
-      to_location: log.to_location,
-      start_time: log.start_time,
-      end_time: log.end_time,
+      dlf_code: log.dlf_code,
+      driver: log.driver,
+      helper: log.helper,
+      plate_no: log.plate_no,
+      trip: log.trip,
+      drop_number: log.drop_number,
+      company_departure: log.company_departure,
+      company_arrival: log.company_arrival,
+      customer: log.customer,
+      address: log.address,
+      customer_arrival: log.customer_arrival,
+      customer_departure: log.customer_departure,
       remarks: log.remarks,
       created_at: log.created_at,
       created_by: log.created_by,
@@ -49,6 +55,17 @@ export const checkAndSync = async () => {
     if (result.success) {
       for (const log of unsyncedLogs) {
         await markTripAsSynced(log.id);
+      }
+      
+      // ALSO mark drop 0 for each delivery as synced
+      const deliveryIds = [...new Set(unsyncedLogs.map(log => log.dlf_code))];
+      for (const deliveryId of deliveryIds) {
+        const allLogs = await getTripLogsByDeliveryId(deliveryId);
+        const drop0s = allLogs.filter(l => l.drop_number === 0 && l.synced === 0);
+        
+        for (const drop0 of drop0s) {
+          await markTripAsSynced(drop0.id);
+        }
       }
       
       return {

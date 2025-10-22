@@ -14,25 +14,29 @@ import {
   getCurrentUser, 
   getCachedDeliveries, 
   saveCachedDelivery,
+  getCachedDeliveryById,
   getTripLogsByDeliveryId,
   addTripLog,
   updateTripLog,
   updateCompanyTimes,
   getNextDropNumber,
   getLocalTimestamp,
+  getAllTripLogs
 } from '../database/db';
 import { fetchDeliveriesFromAPI } from '../api/deliveryApi';
 import CustomerDropModal from '../components/CustomerDropModal';
 
-const DeliveryFormScreen = ({ navigation }) => {
+const DeliveryFormScreen = ({ navigation, route }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   
   // Delivery selection
   const [deliveries, setDeliveries] = useState([]);
   const [showDeliveryPicker, setShowDeliveryPicker] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState(null);
+  const [allTrips, setAllTrips] = useState([]);
   
   // Company times
   const [companyDeparture, setCompanyDeparture] = useState(null);
@@ -47,7 +51,33 @@ const DeliveryFormScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+    
+    // Check if editing existing delivery
+    if (route.params?.deliveryToEdit) {
+      setIsEditMode(true);
+      const draft = route.params.deliveryToEdit;
+      
+      // Load delivery from cache to get customers
+      getCachedDeliveryById(draft.dlf_code).then(cachedDelivery => {
+        if (cachedDelivery) {
+          handleSelectDelivery(cachedDelivery);
+        } else {
+          // Fallback if not in cache
+          handleSelectDelivery({
+            dlf_code: draft.dlf_code,
+            driver: draft.driver,
+            helper: draft.helper,
+            plate_no: draft.plate_no,
+            trip: draft.trip,
+            customers: [],
+          });
+        }
+      });
+      
+      setCompanyDeparture(draft.company_departure);
+      setCompanyArrival(draft.company_arrival);
+    }
+  }, [route.params]);
 
   const loadInitialData = async () => {
     try {
@@ -62,6 +92,10 @@ const DeliveryFormScreen = ({ navigation }) => {
       // Load cached deliveries
       const cached = await getCachedDeliveries();
       setDeliveries(cached);
+      
+      // Load all trips to check used dlf_codes
+      const trips = await getAllTripLogs();
+      setAllTrips(trips);
     } catch (error) {
       console.error('Load initial data error:', error);
       Alert.alert('Error', 'Failed to load data');
@@ -82,10 +116,10 @@ const DeliveryFormScreen = ({ navigation }) => {
         // Save to cache
         for (const item of result.data) {
           const deliveryData = {
-            delivery_id: item.delivery_id,
-            driver_name: item.driver,
+            dlf_code: item.delivery_id,
+            driver: item.driver,
             helper: item.helper,
-            truck_plate: item.truckplateno,
+            plate_no: item.truckplateno,
             trip: item.trip,
             customers: item.dds || [],
           };
@@ -96,7 +130,7 @@ const DeliveryFormScreen = ({ navigation }) => {
         const cached = await getCachedDeliveries();
         setDeliveries(cached);
         
-        Alert.alert('Success', `Fetched ${result.data.length} deliveries`);
+        Alert.alert('Success', `Fetched ${cached.length} deliveries`);
       } else {
         Alert.alert('Info', 'No deliveries found');
       }
@@ -112,7 +146,7 @@ const DeliveryFormScreen = ({ navigation }) => {
     setShowDeliveryPicker(false);
     
     // Load existing drop logs for this delivery
-    const logs = await getTripLogsByDeliveryId(delivery.delivery_id);
+    const logs = await getTripLogsByDeliveryId(delivery.dlf_code);
     setDropLogs(logs);
     
     // Load company times from first log if exists
@@ -131,7 +165,7 @@ const DeliveryFormScreen = ({ navigation }) => {
     
     // Update all existing drops
     if (selectedDelivery && dropLogs.length > 0) {
-      updateCompanyTimes(selectedDelivery.delivery_id, now, companyArrival);
+      updateCompanyTimes(selectedDelivery.dlf_code, now, companyArrival);
     }
   };
 
@@ -141,7 +175,7 @@ const DeliveryFormScreen = ({ navigation }) => {
     
     // Update all existing drops
     if (selectedDelivery && dropLogs.length > 0) {
-      updateCompanyTimes(selectedDelivery.delivery_id, companyDeparture, now);
+      updateCompanyTimes(selectedDelivery.dlf_code, companyDeparture, now);
     }
   };
 
@@ -167,13 +201,13 @@ const DeliveryFormScreen = ({ navigation }) => {
         Alert.alert('Success', 'Drop updated');
       } else {
         // Add new drop
-        const nextDrop = await getNextDropNumber(selectedDelivery.delivery_id);
+        const nextDrop = await getNextDropNumber(selectedDelivery.dlf_code);
         await addTripLog({
           ...dropData,
-          delivery_id: selectedDelivery.delivery_id,
-          driver_name: selectedDelivery.driver_name,
+          dlf_code: selectedDelivery.dlf_code,
+          driver: selectedDelivery.driver,
           helper: selectedDelivery.helper,
-          truck_plate: selectedDelivery.truck_plate,
+          plate_no: selectedDelivery.plate_no,
           trip: selectedDelivery.trip,
           drop_number: nextDrop,
           company_departure: companyDeparture,
@@ -187,7 +221,7 @@ const DeliveryFormScreen = ({ navigation }) => {
       }
       
       // Reload drops
-      const logs = await getTripLogsByDeliveryId(selectedDelivery.delivery_id);
+      const logs = await getTripLogsByDeliveryId(selectedDelivery.dlf_code);
       setDropLogs(logs);
       setShowDropModal(false);
     } catch (error) {
@@ -207,26 +241,39 @@ const handleSaveDraft = async () => {
   }
   
   try {
-    // Save a placeholder "draft" log for this delivery
-    await addTripLog({
-      delivery_id: selectedDelivery.delivery_id,
-      driver_name: selectedDelivery.driver_name,
-      helper: selectedDelivery.helper,
-      truck_plate: selectedDelivery.truck_plate,
-      trip: selectedDelivery.trip,
-      drop_number: 0, // 0 = draft marker (no actual drop yet)
-      company_departure: companyDeparture,
-      company_arrival: companyArrival,
-      customer: null,
-      address: null,
-      customer_arrival: null,
-      customer_departure: null,
-      remarks: 'Draft - No drops logged yet',
-      created_by: getFormattedUserName(),
-      created_at: getLocalTimestamp(),
-      synced: -1, // Draft
-      sync_status: 'no',
-    });
+    // Check if drop 0 already exists for this delivery
+    const existingLogs = await getTripLogsByDeliveryId(selectedDelivery.dlf_code);
+    const existingDrop0 = existingLogs.find(log => log.drop_number === 0);
+    
+    if (existingDrop0) {
+      // Update existing drop 0
+      await updateTripLog(existingDrop0.id, {
+        ...existingDrop0,
+        company_departure: companyDeparture,
+        company_arrival: companyArrival,
+      });
+    } else {
+      // Create new drop 0
+      await addTripLog({
+        dlf_code: selectedDelivery.dlf_code,
+        driver: selectedDelivery.driver,
+        helper: selectedDelivery.helper,
+        plate_no: selectedDelivery.plate_no,
+        trip: selectedDelivery.trip,
+        drop_number: 0,
+        company_departure: companyDeparture,
+        company_arrival: companyArrival,
+        customer: null,
+        address: null,
+        customer_arrival: null,
+        customer_departure: null,
+        remarks: 'Draft - No drops logged yet',
+        created_by: getFormattedUserName(),
+        created_at: getLocalTimestamp(),
+        synced: -1,
+        sync_status: 'no',
+      });
+    }
     
     Alert.alert('Success', 'Delivery saved as draft!', [
       { text: 'OK', onPress: () => navigation.goBack() }
@@ -246,27 +293,53 @@ const handleSaveDraft = async () => {
       Alert.alert('Error', 'Please capture company departure time');
       return;
     }
+
+    if (!companyArrival) {
+      Alert.alert('Error', 'Please capture company arrival time');
+      return;
+    }
     
     if (dropLogs.length === 0) {
       Alert.alert('Error', 'Please log at least one customer drop');
       return;
     }
     
-    const hasArrival = dropLogs.some(log => log.customer_arrival);
+    // Filter out drop_number 0 (draft placeholder)
+    const actualDrops = dropLogs.filter(log => log.drop_number > 0);
+    
+    if (actualDrops.length === 0) {
+      Alert.alert('Error', 'Please log at least one customer drop');
+      return;
+    }
+    
+    const hasArrival = actualDrops.some(log => log.customer_arrival);
     if (!hasArrival) {
       Alert.alert('Error', 'At least one drop must have arrival time');
       return;
     }
     
-    // Mark all drops as ready to sync (synced = 0)
     try {
-      for (const log of dropLogs) {
-        await updateTripLog(log.id, { ...log, synced: 0 });
+      // Update company times for ALL drops (including placeholder)
+      await updateCompanyTimes(selectedDelivery.dlf_code, companyDeparture, companyArrival);
+      
+      // Mark all drops as ready to sync (synced = 0)
+      const allLogs = await getTripLogsByDeliveryId(selectedDelivery.dlf_code);
+      for (const log of allLogs) {
+        await updateTripLog(log.id, { 
+          ...log,
+          company_departure: companyDeparture,
+          company_arrival: companyArrival,
+          synced: 0,
+          sync_status: 'no'
+        });
       }
-      Alert.alert('Success', 'Delivery finalized and ready to sync!');
-      navigation.goBack();
+      
+      Alert.alert('Success', 'Delivery finalized and ready to sync!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
     } catch (error) {
-      Alert.alert('Error', 'Failed to finalize');
+      console.error('Finalize error:', error);
+      Alert.alert('Error', 'Failed to finalize: ' + error.message);
     }
   };
 
@@ -319,7 +392,7 @@ const handleSaveDraft = async () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Refresh Button */}
         <TouchableOpacity
-          style={styles.refreshButton}
+          style={[styles.refreshButton, isEditMode && styles.editModeButton]}
           onPress={handleRefreshDeliveries}
           disabled={syncing}
         >
@@ -333,11 +406,12 @@ const handleSaveDraft = async () => {
         {/* Delivery Dropdown */}
         <Text style={styles.label}>Delivery</Text>
         <TouchableOpacity
-          style={styles.dropdownButton}
-          onPress={() => setShowDeliveryPicker(true)}
+          style={[styles.dropdownButton, isEditMode && styles.dropdownDisabled]}
+          onPress={() => !isEditMode && setShowDeliveryPicker(true)}
+          disabled={isEditMode}
         >
           <Text style={styles.dropdownText}>
-            {selectedDelivery ? selectedDelivery.delivery_id : 'Select delivery...'}
+            {selectedDelivery ? selectedDelivery.dlf_code : 'Select delivery...'}
           </Text>
         </TouchableOpacity>
 
@@ -346,7 +420,7 @@ const handleSaveDraft = async () => {
             {/* Auto-filled fields */}
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Driver:</Text>
-              <Text style={styles.infoValue}>{selectedDelivery.driver_name}</Text>
+              <Text style={styles.infoValue}>{selectedDelivery.driver}</Text>
             </View>
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Helper:</Text>
@@ -354,7 +428,7 @@ const handleSaveDraft = async () => {
             </View>
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Truck:</Text>
-              <Text style={styles.infoValue}>{selectedDelivery.truck_plate}</Text>
+              <Text style={styles.infoValue}>{selectedDelivery.plate_no}</Text>
             </View>
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Trip:</Text>
@@ -401,7 +475,7 @@ const handleSaveDraft = async () => {
             {/* Drop Logs */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Drop Logs</Text>
-              {dropLogs.map((log, idx) => (
+              {dropLogs.filter(log => log.drop_number > 0).map((log, idx) => (
                 <View key={log.id} style={styles.dropLogCard}>
                   <Text style={styles.dropTitle}>
                     Drop {log.drop_number}: ✅ {log.customer}
@@ -447,16 +521,27 @@ const handleSaveDraft = async () => {
             <Text style={styles.modalTitle}>Select Delivery</Text>
             <FlatList
               data={deliveries}
-              keyExtractor={(item) => item.delivery_id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.deliveryItem}
-                  onPress={() => handleSelectDelivery(item)}
-                >
-                  <Text style={styles.deliveryItemText}>{item.delivery_id}</Text>
-                  <Text style={styles.deliveryItemSubtext}>{item.driver_name}</Text>
-                </TouchableOpacity>
-              )}
+              keyExtractor={(item) => item.dlf_code}
+              renderItem={({ item }) => {
+                const hasLogs = allTrips.some(t => t.dlf_code === item.dlf_code);
+                
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.deliveryItem,
+                      hasLogs && styles.deliveryItemUsed
+                    ]}
+                    onPress={() => !hasLogs && handleSelectDelivery(item)}
+                    disabled={hasLogs}
+                  >
+                    <Text style={[styles.deliveryItemText, hasLogs && styles.deliveryItemTextDisabled]}>
+                      {item.dlf_code}
+                      {hasLogs && <Text style={styles.usedBadge}> ✓ Already logged</Text>}
+                    </Text>
+                    <Text style={styles.deliveryItemSubtext}>{item.driver}</Text>
+                  </TouchableOpacity>
+                );
+              }}
             />
             <TouchableOpacity
               style={styles.modalCloseButton}
@@ -488,6 +573,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  editModeButton: {
+    display: 'none',
+  },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -497,12 +585,28 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+  dropdownDisabled: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.6,
+  },
   refreshButton: {
     backgroundColor: '#1FCFFF',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 20,
+  },
+  deliveryItemUsed: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.6,
+  },
+  deliveryItemTextDisabled: {
+    color: '#999',
+  },
+  usedBadge: {
+    color: '#10dc17ff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   refreshButtonText: {
     color: '#fff',

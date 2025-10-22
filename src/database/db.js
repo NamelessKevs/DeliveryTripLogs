@@ -33,10 +33,10 @@ export const initDatabase = async () => {
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS cached_deliveries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        delivery_id TEXT UNIQUE NOT NULL,
-        driver_name TEXT NOT NULL,
+        dlf_code TEXT UNIQUE NOT NULL,
+        driver TEXT NOT NULL,
         helper TEXT,
-        truck_plate TEXT,
+        plate_no TEXT,
         trip TEXT,
         delivery_date TEXT NOT NULL,
         customers_json TEXT NOT NULL,
@@ -47,10 +47,10 @@ export const initDatabase = async () => {
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS trip_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        delivery_id TEXT NOT NULL,
-        driver_name TEXT NOT NULL,
+        dlf_code TEXT NOT NULL,
+        driver TEXT NOT NULL,
         helper TEXT,
-        truck_plate TEXT,
+        plate_no TEXT,
         trip TEXT,
         drop_number INTEGER NOT NULL,
         company_departure TEXT,
@@ -86,6 +86,21 @@ export const initDatabase = async () => {
   }
 };
 
+//comment this later
+export const seedTestUser = async () => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync(
+      `INSERT OR IGNORE INTO users (first_name, middle_name, last_name, username, password)
+       VALUES (?, ?, ?, ?, ?)`,
+      ['Ivan Paul', null, 'Maravilla', 'test', 'test']
+    );
+    console.log('Test user seeded');
+  } catch (error) {
+    console.error('Seed user error:', error);
+  }
+};
+
 // ---------------------
 // Timestamp Helper
 // ---------------------
@@ -102,15 +117,15 @@ export const addTripLog = async (tripLog) => {
     const database = ensureDbInitialized();
     const result = await database.runAsync(
       `INSERT INTO trip_logs 
-        (delivery_id, driver_name, helper, truck_plate, trip, drop_number, 
+        (dlf_code, driver, helper, plate_no, trip, drop_number, 
          company_departure, company_arrival, customer, address, 
          customer_arrival, customer_departure, remarks, created_by, created_at, synced, sync_status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        tripLog.delivery_id,
-        tripLog.driver_name,
+        tripLog.dlf_code,
+        tripLog.driver,
         tripLog.helper || null,
-        tripLog.truck_plate || null,
+        tripLog.plate_no || null,
         tripLog.trip || null,
         tripLog.drop_number,
         tripLog.company_departure || null,
@@ -139,11 +154,11 @@ export const saveDraftTripLog = async (tripLog) => {
     const database = ensureDbInitialized();
     const result = await database.runAsync(
       `INSERT INTO trip_logs 
-        (driver_name, truck_plate, from_location, to_location, start_time, end_time, remarks, created_by, created_at, synced)
+        (driver, plate_no, from_location, to_location, start_time, end_time, remarks, created_by, created_at, synced)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, -1)`,
       [
-        tripLog.driver_name,
-        tripLog.truck_plate || null,
+        tripLog.driver,
+        tripLog.plate_no || null,
         tripLog.from_location || null,
         tripLog.to_location || null,
         tripLog.start_time || null,
@@ -166,16 +181,16 @@ export const updateTripLog = async (id, tripLog) => {
     const database = ensureDbInitialized();
     await database.runAsync(
       `UPDATE trip_logs 
-       SET delivery_id = ?, driver_name = ?, helper = ?, truck_plate = ?, trip = ?,
+       SET dlf_code = ?, driver = ?, helper = ?, plate_no = ?, trip = ?,
            drop_number = ?, company_departure = ?, company_arrival = ?, 
            customer = ?, address = ?, customer_arrival = ?, customer_departure = ?,
-           remarks = ?
+           remarks = ?, synced = ?, sync_status = ?
        WHERE id = ?`,
       [
-        tripLog.delivery_id,
-        tripLog.driver_name,
+        tripLog.dlf_code,
+        tripLog.driver,
         tripLog.helper || null,
-        tripLog.truck_plate || null,
+        tripLog.plate_no || null,
         tripLog.trip || null,
         tripLog.drop_number,
         tripLog.company_departure || null,
@@ -185,6 +200,8 @@ export const updateTripLog = async (id, tripLog) => {
         tripLog.customer_arrival || null,
         tripLog.customer_departure || null,
         tripLog.remarks || null,
+        tripLog.synced,
+        tripLog.sync_status || 'no',
         id,
       ]
     );
@@ -194,12 +211,12 @@ export const updateTripLog = async (id, tripLog) => {
   }
 };
 
-// Get all drops for a specific delivery_id
+// Get all drops for a specific dlf_code
 export const getTripLogsByDeliveryId = async (deliveryId) => {
   try {
     const database = ensureDbInitialized();
     const logs = await database.getAllAsync(
-      'SELECT * FROM trip_logs WHERE delivery_id = ? ORDER BY drop_number ASC',
+      'SELECT * FROM trip_logs WHERE dlf_code = ? ORDER BY drop_number ASC',
       [deliveryId]
     );
     return logs;
@@ -216,7 +233,7 @@ export const updateCompanyTimes = async (deliveryId, companyDeparture, companyAr
     await database.runAsync(
       `UPDATE trip_logs 
        SET company_departure = ?, company_arrival = ?
-       WHERE delivery_id = ?`,
+       WHERE dlf_code = ?`,
       [companyDeparture, companyArrival, deliveryId]
     );
   } catch (error) {
@@ -230,7 +247,7 @@ export const getNextDropNumber = async (deliveryId) => {
   try {
     const database = ensureDbInitialized();
     const result = await database.getAllAsync(
-      'SELECT MAX(drop_number) as max_drop FROM trip_logs WHERE delivery_id = ?',
+      'SELECT MAX(drop_number) as max_drop FROM trip_logs WHERE dlf_code = ?',
       [deliveryId]
     );
     return (result[0]?.max_drop || 0) + 1;
@@ -286,7 +303,9 @@ export const getAllTripLogs = async () => {
 
 export const getUnsyncedTripLogs = async () => {
   try {
-    const logs = await db.getAllAsync('SELECT * FROM trip_logs WHERE synced = 0');
+    const logs = await db.getAllAsync(
+      'SELECT * FROM trip_logs WHERE synced = 0 AND drop_number > 0'
+    );
     return logs;
   } catch (error) {
     console.error('Get unsynced logs error:', error);
@@ -309,18 +328,18 @@ export const saveCachedDelivery = async (delivery) => {
   try {
     const database = ensureDbInitialized();
     
-    // Parse delivery_date from delivery_id (format: 2025-10-21-NKR1046-1)
-    const deliveryDate = delivery.delivery_id.split('-').slice(0, 3).join('-');
+    // Parse delivery_date from dlf_code (format: 2025-10-21-NKR1046-1)
+    const deliveryDate = delivery.dlf_code.split('-').slice(0, 3).join('-');
     
     await database.runAsync(
       `INSERT OR REPLACE INTO cached_deliveries 
-        (delivery_id, driver_name, helper, truck_plate, trip, delivery_date, customers_json, cached_at)
+        (dlf_code, driver, helper, plate_no, trip, delivery_date, customers_json, cached_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        delivery.delivery_id,
-        delivery.driver_name,
+        delivery.dlf_code,
+        delivery.driver,
         delivery.helper || null,
-        delivery.truck_plate || null,
+        delivery.plate_no || null,
         delivery.trip || null,
         deliveryDate,
         JSON.stringify(delivery.customers || []),
@@ -339,11 +358,7 @@ export const getCachedDeliveries = async () => {
     
     // Get date range (yesterday, today, tomorrow)
     const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     const formatDate = (date) => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -351,14 +366,13 @@ export const getCachedDeliveries = async () => {
       return `${year}-${month}-${day}`;
     };
     
-    const dateFrom = formatDate(yesterday);
-    const dateTo = formatDate(tomorrow);
+    const todayDate = formatDate(today);
     
     const deliveries = await database.getAllAsync(
       `SELECT * FROM cached_deliveries 
-       WHERE delivery_date BETWEEN ? AND ?
-       ORDER BY delivery_date DESC, delivery_id DESC`,
-      [dateFrom, dateTo]
+       WHERE delivery_date = ?
+       ORDER BY dlf_code DESC`,
+      [todayDate]
     );
     
     // Parse customers_json back to array
@@ -376,7 +390,7 @@ export const getCachedDeliveryById = async (deliveryId) => {
   try {
     const database = ensureDbInitialized();
     const result = await database.getAllAsync(
-      'SELECT * FROM cached_deliveries WHERE delivery_id = ?',
+      'SELECT * FROM cached_deliveries WHERE dlf_code = ?',
       [deliveryId]
     );
     

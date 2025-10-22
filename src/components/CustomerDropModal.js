@@ -71,10 +71,15 @@ const CustomerDropModal = ({
   };
 
   const handleSelectCustomer = (customerName) => {
-    if (editingDrop) {
+    if (editingDrop && customerName !== editingDrop.customer) {
       // When editing, customer is locked - show alert
       Alert.alert('Note', 'Customer cannot be changed when editing a drop');
       return;
+    }
+    
+    // Check if customer already logged (and not the one we're editing)
+    if (isCustomerLogged(customerName) && (!editingDrop || customerName !== editingDrop.customer)) {
+      return; // Silently ignore (already disabled in UI)
     }
     
     setSelectedCustomer(customerName);
@@ -134,10 +139,10 @@ const CustomerDropModal = ({
 
     // Include fields that shouldn't be changed during edit
     if (editingDrop) {
-      dropData.delivery_id = editingDrop.delivery_id;
-      dropData.driver_name = editingDrop.driver_name;
+      dropData.dlf_code = editingDrop.dlf_code;
+      dropData.driver = editingDrop.driver;
       dropData.helper = editingDrop.helper;
-      dropData.truck_plate = editingDrop.truck_plate;
+      dropData.plate_no = editingDrop.plate_no;
       dropData.trip = editingDrop.trip;
       dropData.drop_number = editingDrop.drop_number;
       dropData.company_departure = editingDrop.company_departure;
@@ -170,7 +175,7 @@ const CustomerDropModal = ({
             {delivery?.customers.map((customer, idx) => {
               const isLogged = isCustomerLogged(customer.customer_name);
               const isSelected = selectedCustomer === customer.customer_name;
-              const isDisabled = editingDrop && selectedCustomer !== customer.customer_name;
+              const isDisabled = isLogged && !editingDrop; // Disable if already logged (unless editing that exact drop)
               
               return (
                 <TouchableOpacity
@@ -188,7 +193,7 @@ const CustomerDropModal = ({
                   </View>
                   <Text style={styles.radioText}>
                     {customer.customer_name}
-                    {isLogged && <Text style={styles.loggedBadge}> ✓</Text>}
+                    {isLogged && <Text style={styles.loggedBadge}> ✓ Logged</Text>}
                   </Text>
                 </TouchableOpacity>
               );

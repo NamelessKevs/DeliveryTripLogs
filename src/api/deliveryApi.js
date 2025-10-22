@@ -6,7 +6,7 @@ export const fetchDeliveriesFromAPI = async (driverName) => {
     const response = await axios.get(
       `${API_CONFIG.LARAVEL_API_URL}/logistics/ldd-data`,
       {
-        params: { driver_name: driverName },
+        params: { driver: driverName },
         timeout: API_CONFIG.TIMEOUT,
         headers: { 'Content-Type': 'application/json' },
       }

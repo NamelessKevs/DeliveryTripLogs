@@ -22,6 +22,19 @@ const TripListScreen = ({navigation}) => {
   const loadTrips = async () => {
     try {
       const allTrips = await getAllTripLogs();
+      
+      // 🐛 DEBUG: Log all trips for a delivery
+      console.log('=== DEBUG TRIPS ===');
+      const testDelivery = allTrips.find(t => t.dlf_code);
+      if (testDelivery) {
+        const sameDelivery = allTrips.filter(t => t.dlf_code === testDelivery.dlf_code);
+        console.log(`Delivery ${testDelivery.dlf_code}:`);
+        sameDelivery.forEach(log => {
+          console.log(`  Drop ${log.drop_number}: synced=${log.synced}`);
+        });
+      }
+      console.log('===================');
+      
       setTrips(allTrips);
     } catch (error) {
       console.error('Load trips error:', error);
@@ -61,14 +74,16 @@ const TripListScreen = ({navigation}) => {
     }
   };
 
-  const handleEditDraft = (item) => {
-    navigation.navigate('DeliveryForm', { draftToEdit: item });
+  const handleEditDraft = (delivery) => {
+    navigation.navigate('DeliveryForm', { 
+      deliveryToEdit: delivery 
+    });
   };
 
-  const handleDeleteDraft = (item) => {
+  const handleDeleteDraft = (delivery) => {
     Alert.alert(
-      'Delete Draft',
-      'Are you sure you want to delete this draft?',
+      'Delete Delivery',
+      `Delete entire delivery ${delivery.dlf_code} and all its drops?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -76,11 +91,18 @@ const TripListScreen = ({navigation}) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteTripLog(item.id);
-              Alert.alert('Success', 'Draft deleted');
+              // Delete all drops with this dlf_code
+              const allTrips = await getAllTripLogs();
+              const tripsToDelete = allTrips.filter(t => t.dlf_code === delivery.dlf_code);
+              
+              for (const trip of tripsToDelete) {
+                await deleteTripLog(trip.id);
+              }
+              
+              Alert.alert('Success', 'Delivery deleted');
               await loadTrips();
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete draft');
+              Alert.alert('Error', 'Failed to delete delivery');
             }
           },
         },
@@ -115,6 +137,46 @@ const TripListScreen = ({navigation}) => {
     }
   };
 
+const groupTripsByDelivery = (trips) => {
+  const grouped = {};
+  
+  trips.forEach(trip => {
+    if (!trip.dlf_code) return;
+    
+    if (!grouped[trip.dlf_code]) {
+      grouped[trip.dlf_code] = {
+        dlf_code: trip.dlf_code,
+        driver: trip.driver,
+        helper: trip.helper,
+        plate_no: trip.plate_no,
+        trip: trip.trip,
+        company_departure: trip.company_departure,
+        company_arrival: trip.company_arrival,
+        created_by: trip.created_by,
+        created_at: trip.created_at,
+        drops: [],
+        synced: null, // Will be determined after processing all drops
+      };
+    }
+    
+    // Add drop to list (skip drop_number 0 placeholders in display)
+    if (trip.drop_number > 0) {
+      grouped[trip.dlf_code].drops.push(trip);
+    }
+    
+    // Track synced status from ALL drops (including drop 0)
+    if (grouped[trip.dlf_code].synced === null) {
+      grouped[trip.dlf_code].synced = trip.synced;
+    } else if (trip.synced === -1) {
+      grouped[trip.dlf_code].synced = -1; // Draft takes priority
+    } else if (trip.synced === 0 && grouped[trip.dlf_code].synced !== -1) {
+      grouped[trip.dlf_code].synced = 0; // Pending
+    }
+  });
+  
+  return Object.values(grouped);
+};
+
   const getStatusBadge = (item) => {
     if (item.synced === 1) {
       return { text: 'Synced', style: styles.syncedBadge };
@@ -125,54 +187,57 @@ const TripListScreen = ({navigation}) => {
     }
   };
 
-  const renderTrip = ({item}) => {
+  const renderDelivery = ({item}) => {
     const badge = getStatusBadge(item);
     const isDraft = item.synced === -1;
     
     return (
       <View style={styles.tripCard}>
         <View style={styles.tripHeader}>
-          <Text style={styles.driverName}>{item.driver_name}</Text>
+          <Text style={styles.driverName}>{item.dlf_code}</Text>
           <View style={[styles.badge, badge.style]}>
             <Text style={styles.badgeText}>{badge.text}</Text>
           </View>
         </View>
         
-        {item.truck_plate && (
-          <Text style={styles.truckPlate}>🚚 {item.truck_plate}</Text>
+        <Text style={styles.truckPlate}>👤 {item.driver}</Text>
+        {item.helper && (
+          <Text style={styles.truckPlate}>🤝 {item.helper}</Text>
         )}
+        <Text style={styles.truckPlate}>🚚 {item.plate_no} | Trip {item.trip}</Text>
         
-        <View style={styles.routeContainer}>
-          <View style={styles.locationRow}>
-            <Text style={styles.locationLabel}>From:</Text>
-            <Text style={styles.locationText}>{item.from_location || 'N/A'}</Text>
-          </View>
-          {item.to_location && (
-            <>
-              <Text style={styles.arrow}>↓</Text>
-              <View style={styles.locationRow}>
-                <Text style={styles.locationLabel}>To:</Text>
-                <Text style={styles.locationText}>{item.to_location}</Text>
-              </View>
-            </>
-          )}
-        </View>
-
         <View style={styles.timeContainer}>
           <View style={styles.timeRow}>
-            <Text style={styles.timeLabel}>Start:</Text>
-            <Text style={styles.timeText}>{formatDateTime(item.start_time)}</Text>
+            <Text style={styles.timeLabel}>Depart:</Text>
+            <Text style={styles.timeText}>{formatDateTime(item.company_departure)}</Text>
           </View>
-          {item.end_time && (
+          {item.company_arrival && (
             <View style={styles.timeRow}>
-              <Text style={styles.timeLabel}>End:</Text>
-              <Text style={styles.timeText}>{formatDateTime(item.end_time)}</Text>
+              <Text style={styles.timeLabel}>Arrival:</Text>
+              <Text style={styles.timeText}>{formatDateTime(item.company_arrival)}</Text>
             </View>
           )}
         </View>
 
-        {item.remarks && (
-          <Text style={styles.remarks}>📝 {item.remarks}</Text>
+        {/* Drops Section */}
+        {item.drops.length > 0 ? (
+          <View style={styles.routeContainer}>
+            <Text style={styles.locationLabel}>Drops:</Text>
+            {item.drops.map((drop, idx) => (
+              <View key={drop.id} style={{marginTop: 8}}>
+                <Text style={styles.locationText}>
+                  {drop.drop_number}. {drop.customer}
+                </Text>
+                <Text style={styles.timeText}>
+                    {formatDateTime(drop.customer_arrival)} - {formatDateTime(drop.customer_departure)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.routeContainer}>
+            <Text style={styles.remarks}>No drops logged yet</Text>
+          </View>
         )}
 
         {item.created_by && (
@@ -200,8 +265,9 @@ const TripListScreen = ({navigation}) => {
     );
   };
 
-  const draftCount = trips.filter(t => t.synced === -1).length;
-  const unsyncedCount = trips.filter(t => t.synced === 0).length;
+  const groupedDeliveries = groupTripsByDelivery(trips);
+  const draftCount = groupedDeliveries.filter(d => d.synced === -1).length;
+  const unsyncedCount = groupedDeliveries.filter(d => d.synced === 0).length;
 
   return (
     <View style={styles.container}>
@@ -210,9 +276,9 @@ const TripListScreen = ({navigation}) => {
           <Text style={styles.title}>Trip Logs</Text>
         </View>
         <View>
-          <Text style={styles.count}>
-            Total: {trips.length} | Drafts: {draftCount} | Pending: {unsyncedCount}
-          </Text>
+        <Text style={styles.count}>
+          Total: {groupedDeliveries.length} | Drafts: {draftCount} | Pending: {unsyncedCount}
+        </Text>
         </View>
       </View>
 
@@ -237,40 +303,30 @@ const TripListScreen = ({navigation}) => {
         </View>
       ) : (
         <FlatList
-          data={trips}
-          renderItem={renderTrip}
-          keyExtractor={item => item.id.toString()}
+          data={groupTripsByDelivery(trips)}
+          renderItem={renderDelivery}
+          keyExtractor={item => item.dlf_code}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         />
-      )}
+)}
 
       <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('TripForm')}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.fab3}
+        style={styles.fabAccount}
         onPress={handleUserManagement}>
         <Text style={styles.fab3Text}>🔑</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={styles.fab2}
+        style={styles.fabLogout}
         onPress={handleLogout}>
-        <Text style={styles.fab2Text}>↩️</Text>
+        <Text style={styles.fabLogoutText}>↩️</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={styles.fab4}
-        onPress={() => navigation.navigate('LDDData')}>
-        <Text style={styles.fab4Text}>📊</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.fab5}
+        style={styles.fabForm}
         onPress={() => navigation.navigate('DeliveryForm')}>
-        <Text style={styles.fab5Text}>🚚</Text>
+        <Text style={styles.fabFormText}>🚚</Text>
       </TouchableOpacity>
     </View>
   );
@@ -457,28 +513,7 @@ const styles = StyleSheet.create({
     color: '#999',
     marginBottom: 20,
   },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 200,
-    backgroundColor: '#10dc17ff',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fabText: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '300',
-  },
-  fab2: {
+  fabLogout: {
     position: 'absolute',
     right: 20,
     bottom: 60,
@@ -494,10 +529,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  fab2Text: {
+  fabLogoutText: {
     fontSize: 24,
   },
-  fab3: {
+  fabAccount: {
     position: 'absolute',
     right: 20,
     bottom: 130,
@@ -513,32 +548,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  fab3Text: {
+  fabAccountText: {
     fontSize: 24,
   },
-  fab4: {
+  fabForm: {
     position: 'absolute',
     right: 20,
-    bottom: 270,
-    backgroundColor: '#ff9800',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fab4Text: {
-    fontSize: 24,
-  },
-  fab5: {
-    position: 'absolute',
-    right: 20,
-    bottom: 340,
+    bottom: 200,
     backgroundColor: '#4caf50',
     width: 50,
     height: 50,
@@ -551,7 +567,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  fab5Text: {
+  fabFormText: {
     fontSize: 24,
   },
 });

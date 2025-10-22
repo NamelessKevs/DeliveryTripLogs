@@ -2,14 +2,12 @@ import React, {useEffect, useState} from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {View, ActivityIndicator, StyleSheet} from 'react-native';
-import {initDatabase} from './src/database/db';
+import {initDatabase, seedTestUser} from './src/database/db';
 import {startAutoSync} from './src/services/syncService';
-import TripFormScreen from './src/screens/TripFormScreen';
 import TripListScreen from './src/screens/TripListScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import UserManagementScreen from './src/screens/UserManagementScreen';
-import LDDDataScreen from './src/screens/LDDDataScreen';
 import DeliveryFormScreen from './src/screens/DeliveryFormScreen';
 
 const Stack = createNativeStackNavigator();
@@ -21,6 +19,7 @@ export default function App() {
     const initialize = async () => {
       try {
         await initDatabase();
+        await seedTestUser();
         console.log('App initialized');
         setIsReady(true);
         
@@ -73,20 +72,12 @@ export default function App() {
           component={TripListScreen}
           options={{ title: 'Betafoam Logistics' }}
         />
-        <Stack.Screen
-          name="TripForm"
-          component={TripFormScreen}
-          options={{ title: 'Log Trip' }}
-        />
-        <Stack.Screen 
-          name="LDDData" 
-          component={LDDDataScreen}
-          options={{ title: 'LDD Data (Test)' }} 
-        />
         <Stack.Screen 
           name="DeliveryForm" 
           component={DeliveryFormScreen}
-          options={{ title: 'Log Delivery (New)' }} 
+          options={({ route }) => ({ 
+            title: route.params?.deliveryToEdit ? 'Edit Delivery' : 'Log Delivery (New)' 
+          })} 
         />
         <Stack.Screen name="Accounts" component={UserManagementScreen} />
       </Stack.Navigator>
