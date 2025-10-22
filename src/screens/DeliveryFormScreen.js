@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -49,6 +50,11 @@ const DeliveryFormScreen = ({ navigation, route }) => {
   const [showDropModal, setShowDropModal] = useState(false);
   const [editingDrop, setEditingDrop] = useState(null);
 
+  const [plantRunHours, setPlantRunHours] = useState('');
+  const [plantOdoDeparture, setPlantOdoDeparture] = useState('');
+  const [plantOdoArrival, setPlantOdoArrival] = useState('');
+  const [plantKmsRun, setPlantKmsRun] = useState('');
+
   useEffect(() => {
     loadInitialData();
     
@@ -68,7 +74,7 @@ const DeliveryFormScreen = ({ navigation, route }) => {
             driver: draft.driver,
             helper: draft.helper,
             plate_no: draft.plate_no,
-            trip: draft.trip,
+            trip_count: draft.trip_count,
             customers: [],
           });
         }
@@ -76,6 +82,10 @@ const DeliveryFormScreen = ({ navigation, route }) => {
       
       setCompanyDeparture(draft.company_departure);
       setCompanyArrival(draft.company_arrival);
+      setPlantRunHours(draft.plant_run_hours || '');
+      setPlantOdoDeparture(draft.plant_odo_departure || '');
+      setPlantOdoArrival(draft.plant_odo_arrival || '');
+      setPlantKmsRun(draft.plant_kms_run || '');
     }
   }, [route.params]);
 
@@ -120,7 +130,7 @@ const DeliveryFormScreen = ({ navigation, route }) => {
             driver: item.driver,
             helper: item.helper,
             plate_no: item.truckplateno,
-            trip: item.trip,
+            trip_count: item.trip,
             customers: item.dds || [],
           };
           await saveCachedDelivery(deliveryData);
@@ -162,6 +172,15 @@ const DeliveryFormScreen = ({ navigation, route }) => {
   const handleCaptureCompanyDeparture = () => {
     const now = formatDateTime(new Date());
     setCompanyDeparture(now);
+
+    // Auto-calculate plant_run_hours
+    if (companyDeparture) {
+      const depTime = new Date(companyDeparture);
+      const arrTime = new Date(now);
+      const diffMs = arrTime - depTime;
+      const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(2); // Convert to hours with 2 decimals
+      setPlantRunHours(diffHours >= 0 ? diffHours : '0');
+    }
     
     // Update all existing drops
     if (selectedDelivery && dropLogs.length > 0) {
@@ -172,6 +191,15 @@ const DeliveryFormScreen = ({ navigation, route }) => {
   const handleCaptureCompanyArrival = () => {
     const now = formatDateTime(new Date());
     setCompanyArrival(now);
+    
+    // Auto-calculate plant_run_hours
+    if (companyDeparture) {
+      const depTime = new Date(companyDeparture);
+      const arrTime = new Date(now);
+      const diffMs = arrTime - depTime;
+      const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(2);
+      setPlantRunHours(diffHours >= 0 ? diffHours : '0');
+    }
     
     // Update all existing drops
     if (selectedDelivery && dropLogs.length > 0) {
@@ -202,16 +230,21 @@ const DeliveryFormScreen = ({ navigation, route }) => {
       } else {
         // Add new drop
         const nextDrop = await getNextDropNumber(selectedDelivery.dlf_code);
+        const calculatedRunHours = calculateRunHours(companyDeparture, companyArrival);
         await addTripLog({
           ...dropData,
           dlf_code: selectedDelivery.dlf_code,
           driver: selectedDelivery.driver,
           helper: selectedDelivery.helper,
           plate_no: selectedDelivery.plate_no,
-          trip: selectedDelivery.trip,
-          drop_number: nextDrop,
+          trip_count: selectedDelivery.trip_count,
           company_departure: companyDeparture,
           company_arrival: companyArrival,
+          plant_run_hours: calculatedRunHours || plantRunHours,
+          plant_odo_departure: plantOdoDeparture,
+          plant_odo_arrival: plantOdoArrival,
+          plant_kms_run: plantKmsRun,
+          drop_number: nextDrop,
           created_by: getFormattedUserName(),
           created_at: getLocalTimestamp(),
           synced: -1, // Draft by default
@@ -244,6 +277,7 @@ const handleSaveDraft = async () => {
     // Check if drop 0 already exists for this delivery
     const existingLogs = await getTripLogsByDeliveryId(selectedDelivery.dlf_code);
     const existingDrop0 = existingLogs.find(log => log.drop_number === 0);
+    const calculatedRunHours = calculateRunHours(companyDeparture, companyArrival);
     
     if (existingDrop0) {
       // Update existing drop 0
@@ -251,6 +285,7 @@ const handleSaveDraft = async () => {
         ...existingDrop0,
         company_departure: companyDeparture,
         company_arrival: companyArrival,
+        plant_run_hours: calculatedRunHours || plantRunHours, // Use calculated or manual
       });
     } else {
       // Create new drop 0
@@ -259,10 +294,14 @@ const handleSaveDraft = async () => {
         driver: selectedDelivery.driver,
         helper: selectedDelivery.helper,
         plate_no: selectedDelivery.plate_no,
-        trip: selectedDelivery.trip,
-        drop_number: 0,
+        trip_count: selectedDelivery.trip_count,
         company_departure: companyDeparture,
         company_arrival: companyArrival,
+        plant_run_hours: calculatedRunHours || plantRunHours,
+        plant_odo_departure: plantOdoDeparture,
+        plant_odo_arrival: plantOdoArrival,
+        plant_kms_run: plantKmsRun,
+        drop_number: 0,
         customer: null,
         address: null,
         customer_arrival: null,
@@ -324,11 +363,13 @@ const handleSaveDraft = async () => {
       
       // Mark all drops as ready to sync (synced = 0)
       const allLogs = await getTripLogsByDeliveryId(selectedDelivery.dlf_code);
+      const calculatedRunHours = calculateRunHours(companyDeparture, companyArrival);
       for (const log of allLogs) {
         await updateTripLog(log.id, { 
           ...log,
           company_departure: companyDeparture,
           company_arrival: companyArrival,
+          plant_run_hours: calculatedRunHours || log.plant_run_hours,
           synced: 0,
           sync_status: 'no'
         });
@@ -372,6 +413,19 @@ const handleSaveDraft = async () => {
       });
     } catch {
       return dateStr;
+    }
+  };
+
+  const calculateRunHours = (departure, arrival) => {
+    if (!departure || !arrival) return null;
+    try {
+      const depTime = new Date(departure);
+      const arrTime = new Date(arrival);
+      const diffMs = arrTime - depTime;
+      const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(2);
+      return diffHours >= 0 ? diffHours : null;
+    } catch {
+      return null;
     }
   };
 
@@ -432,7 +486,7 @@ const handleSaveDraft = async () => {
             </View>
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Trip:</Text>
-              <Text style={styles.infoValue}>{selectedDelivery.trip}</Text>
+              <Text style={styles.infoValue}>{selectedDelivery.trip_count}</Text>
             </View>
 
             {/* Company Times */}
@@ -454,6 +508,59 @@ const handleSaveDraft = async () => {
                   Arrival: {formatTimeOnly(companyArrival)}
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            {/* Plant Metrics */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Plant Metrics</Text>
+              
+              <Text style={styles.label}>Run Hours (auto-calculated)</Text>
+              <TextInput
+                style={[styles.input, styles.inputDisabled]}
+                placeholder="Auto-calculated from company times"
+                value={plantRunHours}
+                editable={false}
+              />
+
+              <Text style={styles.label}>Odometer Departure (km)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 125400"
+                keyboardType="number-pad"
+                value={plantOdoDeparture}
+                onChangeText={(value) => {
+                  setPlantOdoDeparture(value);
+                  // Auto-calculate kms_run if both values exist
+                  if (plantOdoArrival && value) {
+                    const kms = parseFloat(plantOdoArrival) - parseFloat(value);
+                    setPlantKmsRun(kms >= 0 ? kms.toFixed(1) : '');
+                  }
+                }}
+              />
+
+              <Text style={styles.label}>Odometer Arrival (km)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 125650"
+                keyboardType="number-pad"
+                value={plantOdoArrival}
+                onChangeText={(value) => {
+                  setPlantOdoArrival(value);
+                  // Auto-calculate kms_run
+                  if (plantOdoDeparture && value) {
+                    const kms = parseFloat(value) - parseFloat(plantOdoDeparture);
+                    setPlantKmsRun(kms >= 0 ? kms.toFixed(1) : '');
+                  }
+                }}
+              />
+
+              <Text style={styles.label}>Kilometers Run (auto-calculated)</Text>
+              <TextInput
+                style={[styles.input, styles.inputDisabled]}
+                placeholder="Auto-calculated"
+                value={plantKmsRun}
+                editable={false}
+              />
             </View>
 
             {/* Customer Checklist */}
@@ -602,6 +709,16 @@ const styles = StyleSheet.create({
   },
   deliveryItemTextDisabled: {
     color: '#999',
+  },
+  form: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   usedBadge: {
     color: '#10dc17ff',
@@ -753,6 +870,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     padding: 20,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    backgroundColor: '#fff',
+    marginBottom: 12,
+  },
+  inputDisabled: {
+    backgroundColor: '#f0f0f0',
+    color: '#504f4fff',
   },
   modalContent: {
     backgroundColor: '#fff',

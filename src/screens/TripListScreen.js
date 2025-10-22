@@ -22,19 +22,6 @@ const TripListScreen = ({navigation}) => {
   const loadTrips = async () => {
     try {
       const allTrips = await getAllTripLogs();
-      
-      // 🐛 DEBUG: Log all trips for a delivery
-      console.log('=== DEBUG TRIPS ===');
-      const testDelivery = allTrips.find(t => t.dlf_code);
-      if (testDelivery) {
-        const sameDelivery = allTrips.filter(t => t.dlf_code === testDelivery.dlf_code);
-        console.log(`Delivery ${testDelivery.dlf_code}:`);
-        sameDelivery.forEach(log => {
-          console.log(`  Drop ${log.drop_number}: synced=${log.synced}`);
-        });
-      }
-      console.log('===================');
-      
       setTrips(allTrips);
     } catch (error) {
       console.error('Load trips error:', error);
@@ -149,14 +136,35 @@ const groupTripsByDelivery = (trips) => {
         driver: trip.driver,
         helper: trip.helper,
         plate_no: trip.plate_no,
-        trip: trip.trip,
+        trip_count: trip.trip_count,
         company_departure: trip.company_departure,
         company_arrival: trip.company_arrival,
+        plant_run_hours: trip.plant_run_hours,
+        plant_odo_departure: trip.plant_odo_departure,
+        plant_odo_arrival: trip.plant_odo_arrival,
+        plant_kms_run: trip.plant_kms_run,
         created_by: trip.created_by,
         created_at: trip.created_at,
         drops: [],
-        synced: null, // Will be determined after processing all drops
+        synced: null,
       };
+    } else {
+      // Update plant metrics if current trip has values and grouped doesn't
+      if (trip.plant_run_hours && !grouped[trip.dlf_code].plant_run_hours) {
+        grouped[trip.dlf_code].plant_run_hours = trip.plant_run_hours;
+      }
+      if (trip.plant_odo_departure && !grouped[trip.dlf_code].plant_odo_departure) {
+        grouped[trip.dlf_code].plant_odo_departure = trip.plant_odo_departure;
+      }
+      if (trip.plant_odo_arrival && !grouped[trip.dlf_code].plant_odo_arrival) {
+        grouped[trip.dlf_code].plant_odo_arrival = trip.plant_odo_arrival;
+      }
+      if (trip.plant_kms_run && !grouped[trip.dlf_code].plant_kms_run) {
+        grouped[trip.dlf_code].plant_kms_run = trip.plant_kms_run;
+      }
+      // Always update company times to latest
+      grouped[trip.dlf_code].company_departure = trip.company_departure || grouped[trip.dlf_code].company_departure;
+      grouped[trip.dlf_code].company_arrival = trip.company_arrival || grouped[trip.dlf_code].company_arrival;
     }
     
     // Add drop to list (skip drop_number 0 placeholders in display)
@@ -204,7 +212,10 @@ const groupTripsByDelivery = (trips) => {
         {item.helper && (
           <Text style={styles.truckPlate}>🤝 {item.helper}</Text>
         )}
-        <Text style={styles.truckPlate}>🚚 {item.plate_no} | Trip {item.trip}</Text>
+        <Text style={styles.truckPlate}>🚚 {item.plate_no} | Trip {item.trip_count}</Text>
+        <Text style={styles.truckPlate}>ODO Depart {item.plant_odo_departure} | ODO Arrive {item.plant_odo_arrival}</Text>
+        <Text style={styles.truckPlate}>Run Hours {item.plant_run_hours}</Text>
+        <Text style={styles.truckPlate}>Kms Run {item.plant_kms_run}</Text>
         
         <View style={styles.timeContainer}>
           <View style={styles.timeRow}>

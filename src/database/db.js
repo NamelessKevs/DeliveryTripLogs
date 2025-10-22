@@ -37,7 +37,7 @@ export const initDatabase = async () => {
         driver TEXT NOT NULL,
         helper TEXT,
         plate_no TEXT,
-        trip TEXT,
+        trip_count TEXT,
         delivery_date TEXT NOT NULL,
         customers_json TEXT NOT NULL,
         cached_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -51,10 +51,14 @@ export const initDatabase = async () => {
         driver TEXT NOT NULL,
         helper TEXT,
         plate_no TEXT,
-        trip TEXT,
-        drop_number INTEGER NOT NULL,
+        trip_count TEXT,
         company_departure TEXT,
         company_arrival TEXT,
+        plant_run_hours TEXT,
+        plant_odo_departure TEXT,
+        plant_odo_arrival TEXT,
+        plant_kms_run TEXT,
+        drop_number INTEGER NOT NULL,
         customer TEXT,
         address TEXT,
         customer_arrival TEXT,
@@ -117,19 +121,23 @@ export const addTripLog = async (tripLog) => {
     const database = ensureDbInitialized();
     const result = await database.runAsync(
       `INSERT INTO trip_logs 
-        (dlf_code, driver, helper, plate_no, trip, drop_number, 
-         company_departure, company_arrival, customer, address, 
+        (dlf_code, driver, helper, plate_no, trip_count, 
+         company_departure, company_arrival, plant_run_hours, plant_odo_departure, plant_odo_arrival, plant_kms_run, drop_number, customer, address, 
          customer_arrival, customer_departure, remarks, created_by, created_at, synced, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tripLog.dlf_code,
         tripLog.driver,
         tripLog.helper || null,
         tripLog.plate_no || null,
-        tripLog.trip || null,
-        tripLog.drop_number,
+        tripLog.trip_count || null,
         tripLog.company_departure || null,
         tripLog.company_arrival || null,
+        tripLog.plant_run_hours || null,
+        tripLog.plant_odo_departure || null,
+        tripLog.plant_odo_arrival || null,
+        tripLog.plant_kms_run || null,
+        tripLog.drop_number,
         tripLog.customer || null,
         tripLog.address || null,
         tripLog.customer_arrival || null,
@@ -148,53 +156,29 @@ export const addTripLog = async (tripLog) => {
   }
 };
 
-// Save as draft (synced = -1)
-export const saveDraftTripLog = async (tripLog) => {
-  try {
-    const database = ensureDbInitialized();
-    const result = await database.runAsync(
-      `INSERT INTO trip_logs 
-        (driver, plate_no, from_location, to_location, start_time, end_time, remarks, created_by, created_at, synced)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, -1)`,
-      [
-        tripLog.driver,
-        tripLog.plate_no || null,
-        tripLog.from_location || null,
-        tripLog.to_location || null,
-        tripLog.start_time || null,
-        tripLog.end_time || null,
-        tripLog.remarks || null,
-        tripLog.created_by,
-        tripLog.created_at || getLocalTimestamp(),
-      ]
-    );
-    return result.lastInsertRowId;
-  } catch (error) {
-    console.error('Save draft log error:', error);
-    throw error;
-  }
-};
-
 // Update existing trip log
 export const updateTripLog = async (id, tripLog) => {
   try {
     const database = ensureDbInitialized();
     await database.runAsync(
       `UPDATE trip_logs 
-       SET dlf_code = ?, driver = ?, helper = ?, plate_no = ?, trip = ?,
-           drop_number = ?, company_departure = ?, company_arrival = ?, 
-           customer = ?, address = ?, customer_arrival = ?, customer_departure = ?,
-           remarks = ?, synced = ?, sync_status = ?
+       SET dlf_code = ?, driver = ?, helper = ?, plate_no = ?, trip_count = ?, company_departure = ?, company_arrival = ?,
+           plant_run_hours = ?, plant_odo_departure = ?, plant_odo_arrival = ?, plant_kms_run = ?, drop_number = ?,
+           customer = ?, address = ?, customer_arrival = ?, customer_departure = ?, remarks = ?, synced = ?, sync_status = ?
        WHERE id = ?`,
       [
         tripLog.dlf_code,
         tripLog.driver,
         tripLog.helper || null,
         tripLog.plate_no || null,
-        tripLog.trip || null,
-        tripLog.drop_number,
+        tripLog.trip_count || null,
         tripLog.company_departure || null,
         tripLog.company_arrival || null,
+        tripLog.plant_run_hours || null,
+        tripLog.plant_odo_departure || null,
+        tripLog.plant_odo_arrival || null,
+        tripLog.plant_kms_run || null,
+        tripLog.drop_number,
         tripLog.customer || null,
         tripLog.address || null,
         tripLog.customer_arrival || null,
@@ -333,14 +317,14 @@ export const saveCachedDelivery = async (delivery) => {
     
     await database.runAsync(
       `INSERT OR REPLACE INTO cached_deliveries 
-        (dlf_code, driver, helper, plate_no, trip, delivery_date, customers_json, cached_at)
+        (dlf_code, driver, helper, plate_no, trip_count, delivery_date, customers_json, cached_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         delivery.dlf_code,
         delivery.driver,
         delivery.helper || null,
         delivery.plate_no || null,
-        delivery.trip || null,
+        delivery.trip_count || null,
         deliveryDate,
         JSON.stringify(delivery.customers || []),
         getLocalTimestamp(),
