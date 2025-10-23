@@ -213,9 +213,7 @@ const groupTripsByDelivery = (trips) => {
           <Text style={styles.truckPlate}>🤝 {item.helper}</Text>
         )}
         <Text style={styles.truckPlate}>🚚 {item.plate_no} | Trip {item.trip_count}</Text>
-        <Text style={styles.truckPlate}>ODO Depart {item.plant_odo_departure} | ODO Arrive {item.plant_odo_arrival}</Text>
-        <Text style={styles.truckPlate}>Run Hours {item.plant_run_hours}</Text>
-        <Text style={styles.truckPlate}>Kms Run {item.plant_kms_run}</Text>
+        <Text style={styles.truckPlate}>ODO Depart: {item.plant_odo_departure} | ODO Arrive: {item.plant_odo_arrival}</Text>
         
         <View style={styles.timeContainer}>
           <View style={styles.timeRow}>

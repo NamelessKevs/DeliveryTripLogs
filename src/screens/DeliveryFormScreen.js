@@ -127,6 +127,7 @@ const DeliveryFormScreen = ({ navigation, route }) => {
         for (const item of result.data) {
           const deliveryData = {
             dlf_code: item.delivery_id,
+            delivery_date: item.delivery_date,
             driver: item.driver,
             helper: item.helper,
             plate_no: item.truckplateno,
@@ -285,7 +286,10 @@ const handleSaveDraft = async () => {
         ...existingDrop0,
         company_departure: companyDeparture,
         company_arrival: companyArrival,
-        plant_run_hours: calculatedRunHours || plantRunHours, // Use calculated or manual
+        plant_run_hours: calculatedRunHours || plantRunHours,
+        plant_odo_departure: plantOdoDeparture,  // ADD
+        plant_odo_arrival: plantOdoArrival,      // ADD
+        plant_kms_run: plantKmsRun,  
       });
     } else {
       // Create new drop 0
@@ -370,6 +374,9 @@ const handleSaveDraft = async () => {
           company_departure: companyDeparture,
           company_arrival: companyArrival,
           plant_run_hours: calculatedRunHours || log.plant_run_hours,
+          plant_odo_departure: plantOdoDeparture || log.plant_odo_departure,  // ADD
+          plant_odo_arrival: plantOdoArrival || log.plant_odo_arrival,        // ADD
+          plant_kms_run: plantKmsRun || log.plant_kms_run,                    // ADD
           synced: 0,
           sync_status: 'no'
         });
@@ -514,9 +521,9 @@ const handleSaveDraft = async () => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Plant Metrics</Text>
               
-              <Text style={styles.label}>Run Hours (auto-calculated)</Text>
+              <Text style={styles.labelHide}>Run Hours (auto-calculated)</Text>
               <TextInput
-                style={[styles.input, styles.inputDisabled]}
+                style={[styles.inputHide, styles.inputDisabled]}
                 placeholder="Auto-calculated from company times"
                 value={plantRunHours}
                 editable={false}
@@ -554,9 +561,9 @@ const handleSaveDraft = async () => {
                 }}
               />
 
-              <Text style={styles.label}>Kilometers Run (auto-calculated)</Text>
+              <Text style={styles.labelHide}>Kilometers Run (auto-calculated)</Text>
               <TextInput
-                style={[styles.input, styles.inputDisabled]}
+                style={[styles.inputHide, styles.inputDisabled]}
                 placeholder="Auto-calculated"
                 value={plantKmsRun}
                 editable={false}
@@ -681,6 +688,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   editModeButton: {
+    display: 'none',
+  },
+  labelHide: {
+    display: 'none',
+  },
+  inputHide: {
     display: 'none',
   },
   centerContainer: {

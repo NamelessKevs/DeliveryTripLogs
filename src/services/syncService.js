@@ -54,6 +54,8 @@ export const checkAndSync = async () => {
       created_by: log.created_by,
     }));
 
+    console.log('📤 Syncing data:', JSON.stringify(tripsToSync, null, 2));
+
     const result = await syncTripsToGoogleSheets(tripsToSync);
 
     if (result.success) {

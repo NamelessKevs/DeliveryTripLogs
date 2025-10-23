@@ -97,7 +97,7 @@ export const seedTestUser = async () => {
     await database.runAsync(
       `INSERT OR IGNORE INTO users (first_name, middle_name, last_name, username, password)
        VALUES (?, ?, ?, ?, ?)`,
-      ['Ivan Paul', null, 'Maravilla', 'test', 'test']
+      ['Ivan Paul', 'Yacap', 'Maravilla', 'test', 'test']
     );
     console.log('Test user seeded');
   } catch (error) {
@@ -312,8 +312,7 @@ export const saveCachedDelivery = async (delivery) => {
   try {
     const database = ensureDbInitialized();
     
-    // Parse delivery_date from dlf_code (format: 2025-10-21-NKR1046-1)
-    const deliveryDate = delivery.dlf_code.split('-').slice(0, 3).join('-');
+    const deliveryDate = delivery.delivery_date || delivery.dlf_code.split('-').slice(0, 3).join('-');
     
     await database.runAsync(
       `INSERT OR REPLACE INTO cached_deliveries 
