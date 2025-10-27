@@ -139,10 +139,10 @@ const groupTripsByDelivery = (trips) => {
         trip_count: trip.trip_count,
         company_departure: trip.company_departure,
         company_arrival: trip.company_arrival,
-        plant_run_hours: trip.plant_run_hours,
+        dr_no: trip.dr_no,
         plant_odo_departure: trip.plant_odo_departure,
         plant_odo_arrival: trip.plant_odo_arrival,
-        plant_kms_run: trip.plant_kms_run,
+        si_no: trip.si_no,
         created_by: trip.created_by,
         created_at: trip.created_at,
         drops: [],
@@ -150,8 +150,8 @@ const groupTripsByDelivery = (trips) => {
       };
     } else {
       // Update plant metrics if current trip has values and grouped doesn't
-      if (trip.plant_run_hours && !grouped[trip.dlf_code].plant_run_hours) {
-        grouped[trip.dlf_code].plant_run_hours = trip.plant_run_hours;
+      if (trip.dr_no && !grouped[trip.dlf_code].dr_no) {
+        grouped[trip.dlf_code].dr_no = trip.dr_no;
       }
       if (trip.plant_odo_departure && !grouped[trip.dlf_code].plant_odo_departure) {
         grouped[trip.dlf_code].plant_odo_departure = trip.plant_odo_departure;
@@ -159,8 +159,8 @@ const groupTripsByDelivery = (trips) => {
       if (trip.plant_odo_arrival && !grouped[trip.dlf_code].plant_odo_arrival) {
         grouped[trip.dlf_code].plant_odo_arrival = trip.plant_odo_arrival;
       }
-      if (trip.plant_kms_run && !grouped[trip.dlf_code].plant_kms_run) {
-        grouped[trip.dlf_code].plant_kms_run = trip.plant_kms_run;
+      if (trip.si_no && !grouped[trip.dlf_code].si_no) {
+        grouped[trip.dlf_code].si_no = trip.si_no;
       }
       // Always update company times to latest
       grouped[trip.dlf_code].company_departure = trip.company_departure || grouped[trip.dlf_code].company_departure;
@@ -213,6 +213,8 @@ const groupTripsByDelivery = (trips) => {
           <Text style={styles.truckPlate}>🤝 {item.helper}</Text>
         )}
         <Text style={styles.truckPlate}>🚚 {item.plate_no} | Trip {item.trip_count}</Text>
+        <Text style={styles.truckPlate}>DR No#: {item.dr_no}</Text>
+        <Text style={styles.truckPlate}>SI No#: {item.si_no}</Text>
         <Text style={styles.truckPlate}>ODO Depart: {item.plant_odo_departure} | ODO Arrive: {item.plant_odo_arrival}</Text>
         
         <View style={styles.timeContainer}>

@@ -50,10 +50,10 @@ const DeliveryFormScreen = ({ navigation, route }) => {
   const [showDropModal, setShowDropModal] = useState(false);
   const [editingDrop, setEditingDrop] = useState(null);
 
-  const [plantRunHours, setPlantRunHours] = useState('');
+  const [drNo, setDrNo] = useState('');
   const [plantOdoDeparture, setPlantOdoDeparture] = useState('');
   const [plantOdoArrival, setPlantOdoArrival] = useState('');
-  const [plantKmsRun, setPlantKmsRun] = useState('');
+  const [siNo, setSiNo] = useState('');
 
   useEffect(() => {
     loadInitialData();
@@ -82,10 +82,10 @@ const DeliveryFormScreen = ({ navigation, route }) => {
       
       setCompanyDeparture(draft.company_departure);
       setCompanyArrival(draft.company_arrival);
-      setPlantRunHours(draft.plant_run_hours || '');
+      setDrNo(draft.dr_no || '');
       setPlantOdoDeparture(draft.plant_odo_departure || '');
       setPlantOdoArrival(draft.plant_odo_arrival || '');
-      setPlantKmsRun(draft.plant_kms_run || '');
+      setSiNo(draft.si_no || '');
     }
   }, [route.params]);
 
@@ -173,15 +173,6 @@ const DeliveryFormScreen = ({ navigation, route }) => {
   const handleCaptureCompanyDeparture = () => {
     const now = formatDateTime(new Date());
     setCompanyDeparture(now);
-
-    // Auto-calculate plant_run_hours
-    if (companyDeparture) {
-      const depTime = new Date(companyDeparture);
-      const arrTime = new Date(now);
-      const diffMs = arrTime - depTime;
-      const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(2); // Convert to hours with 2 decimals
-      setPlantRunHours(diffHours >= 0 ? diffHours : '0');
-    }
     
     // Update all existing drops
     if (selectedDelivery && dropLogs.length > 0) {
@@ -190,17 +181,14 @@ const DeliveryFormScreen = ({ navigation, route }) => {
   };
 
   const handleCaptureCompanyArrival = () => {
+    // Validate departure was captured first
+    if (!companyDeparture) {
+      Alert.alert('Warning', 'Please capture company departure time first');
+      return;
+    }
+
     const now = formatDateTime(new Date());
     setCompanyArrival(now);
-    
-    // Auto-calculate plant_run_hours
-    if (companyDeparture) {
-      const depTime = new Date(companyDeparture);
-      const arrTime = new Date(now);
-      const diffMs = arrTime - depTime;
-      const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(2);
-      setPlantRunHours(diffHours >= 0 ? diffHours : '0');
-    }
     
     // Update all existing drops
     if (selectedDelivery && dropLogs.length > 0) {
@@ -231,7 +219,6 @@ const DeliveryFormScreen = ({ navigation, route }) => {
       } else {
         // Add new drop
         const nextDrop = await getNextDropNumber(selectedDelivery.dlf_code);
-        const calculatedRunHours = calculateRunHours(companyDeparture, companyArrival);
         await addTripLog({
           ...dropData,
           dlf_code: selectedDelivery.dlf_code,
@@ -241,10 +228,10 @@ const DeliveryFormScreen = ({ navigation, route }) => {
           trip_count: selectedDelivery.trip_count,
           company_departure: companyDeparture,
           company_arrival: companyArrival,
-          plant_run_hours: calculatedRunHours || plantRunHours,
-          plant_odo_departure: plantOdoDeparture,
-          plant_odo_arrival: plantOdoArrival,
-          plant_kms_run: plantKmsRun,
+          dr_no: drNo || null,
+          plant_odo_departure: plantOdoDeparture || null,
+          plant_odo_arrival: plantOdoArrival || null,
+          si_no: siNo || null,
           drop_number: nextDrop,
           created_by: getFormattedUserName(),
           created_at: getLocalTimestamp(),
@@ -278,7 +265,6 @@ const handleSaveDraft = async () => {
     // Check if drop 0 already exists for this delivery
     const existingLogs = await getTripLogsByDeliveryId(selectedDelivery.dlf_code);
     const existingDrop0 = existingLogs.find(log => log.drop_number === 0);
-    const calculatedRunHours = calculateRunHours(companyDeparture, companyArrival);
     
     if (existingDrop0) {
       // Update existing drop 0
@@ -286,10 +272,10 @@ const handleSaveDraft = async () => {
         ...existingDrop0,
         company_departure: companyDeparture,
         company_arrival: companyArrival,
-        plant_run_hours: calculatedRunHours || plantRunHours,
-        plant_odo_departure: plantOdoDeparture,  // ADD
-        plant_odo_arrival: plantOdoArrival,      // ADD
-        plant_kms_run: plantKmsRun,  
+        dr_no: drNo || existingDrop0.dr_no || null,
+        plant_odo_departure: plantOdoDeparture || existingDrop0.plant_odo_departure || null,
+        plant_odo_arrival: plantOdoArrival || existingDrop0.plant_odo_arrival || null,
+        si_no: siNo || existingDrop0.si_no || null,
       });
     } else {
       // Create new drop 0
@@ -301,10 +287,10 @@ const handleSaveDraft = async () => {
         trip_count: selectedDelivery.trip_count,
         company_departure: companyDeparture,
         company_arrival: companyArrival,
-        plant_run_hours: calculatedRunHours || plantRunHours,
-        plant_odo_departure: plantOdoDeparture,
-        plant_odo_arrival: plantOdoArrival,
-        plant_kms_run: plantKmsRun,
+        dr_no: drNo || null,
+        plant_odo_departure: plantOdoDeparture || null,
+        plant_odo_arrival: plantOdoArrival || null,
+        si_no: siNo || null,
         drop_number: 0,
         customer: null,
         address: null,
@@ -367,16 +353,15 @@ const handleSaveDraft = async () => {
       
       // Mark all drops as ready to sync (synced = 0)
       const allLogs = await getTripLogsByDeliveryId(selectedDelivery.dlf_code);
-      const calculatedRunHours = calculateRunHours(companyDeparture, companyArrival);
       for (const log of allLogs) {
         await updateTripLog(log.id, { 
           ...log,
           company_departure: companyDeparture,
           company_arrival: companyArrival,
-          plant_run_hours: calculatedRunHours || log.plant_run_hours,
-          plant_odo_departure: plantOdoDeparture || log.plant_odo_departure,  // ADD
-          plant_odo_arrival: plantOdoArrival || log.plant_odo_arrival,        // ADD
-          plant_kms_run: plantKmsRun || log.plant_kms_run,                    // ADD
+          dr_no: drNo || log.dr_no || null,
+          plant_odo_departure: plantOdoDeparture || log.plant_odo_departure || null,
+          plant_odo_arrival: plantOdoArrival || log.plant_odo_arrival || null,
+          si_no: siNo || log.si_no || null,
           synced: 0,
           sync_status: 'no'
         });
@@ -420,19 +405,6 @@ const handleSaveDraft = async () => {
       });
     } catch {
       return dateStr;
-    }
-  };
-
-  const calculateRunHours = (departure, arrival) => {
-    if (!departure || !arrival) return null;
-    try {
-      const depTime = new Date(departure);
-      const arrTime = new Date(arrival);
-      const diffMs = arrTime - depTime;
-      const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(2);
-      return diffHours >= 0 ? diffHours : null;
-    } catch {
-      return null;
     }
   };
 
@@ -496,6 +468,26 @@ const handleSaveDraft = async () => {
               <Text style={styles.infoValue}>{selectedDelivery.trip_count}</Text>
             </View>
 
+            <View style={styles.section}>
+              <Text style={styles.label}>DR Number</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., DR-0001"
+                autoCapitalize="characters"
+                value={drNo}
+                onChangeText={setDrNo}
+              />
+
+              <Text style={styles.label}>SI Number</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., SI-0001"
+                autoCapitalize="characters"
+                value={siNo}
+                onChangeText={setSiNo}
+              />
+            </View>
+
             {/* Company Times */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Company Times</Text>
@@ -520,53 +512,21 @@ const handleSaveDraft = async () => {
             {/* Plant Metrics */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Plant Metrics</Text>
-              
-              <Text style={styles.labelHide}>Run Hours (auto-calculated)</Text>
-              <TextInput
-                style={[styles.inputHide, styles.inputDisabled]}
-                placeholder="Auto-calculated from company times"
-                value={plantRunHours}
-                editable={false}
-              />
-
               <Text style={styles.label}>Odometer Departure (km)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., 125400"
                 keyboardType="number-pad"
                 value={plantOdoDeparture}
-                onChangeText={(value) => {
-                  setPlantOdoDeparture(value);
-                  // Auto-calculate kms_run if both values exist
-                  if (plantOdoArrival && value) {
-                    const kms = parseFloat(plantOdoArrival) - parseFloat(value);
-                    setPlantKmsRun(kms >= 0 ? kms.toFixed(1) : '');
-                  }
-                }}
+                onChangeText={setPlantOdoDeparture}
               />
-
               <Text style={styles.label}>Odometer Arrival (km)</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., 125650"
                 keyboardType="number-pad"
                 value={plantOdoArrival}
-                onChangeText={(value) => {
-                  setPlantOdoArrival(value);
-                  // Auto-calculate kms_run
-                  if (plantOdoDeparture && value) {
-                    const kms = parseFloat(value) - parseFloat(plantOdoDeparture);
-                    setPlantKmsRun(kms >= 0 ? kms.toFixed(1) : '');
-                  }
-                }}
-              />
-
-              <Text style={styles.labelHide}>Kilometers Run (auto-calculated)</Text>
-              <TextInput
-                style={[styles.inputHide, styles.inputDisabled]}
-                placeholder="Auto-calculated"
-                value={plantKmsRun}
-                editable={false}
+                onChangeText={setPlantOdoArrival}
               />
             </View>
 
@@ -688,12 +648,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   editModeButton: {
-    display: 'none',
-  },
-  labelHide: {
-    display: 'none',
-  },
-  inputHide: {
     display: 'none',
   },
   centerContainer: {

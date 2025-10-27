@@ -83,12 +83,6 @@ const CustomerDropModal = ({
     }
     
     setSelectedCustomer(customerName);
-    
-    // Pre-fill remarks with SO numbers for this customer
-    const customer = delivery.customers.find(c => c.customer_name === customerName);
-    if (customer && customer.so_no) {
-      setRemarks(customer.so_no);
-    }
   };
 
   const handleCaptureArrival = () => {

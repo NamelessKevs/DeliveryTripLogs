@@ -54,10 +54,10 @@ export const initDatabase = async () => {
         trip_count TEXT,
         company_departure TEXT,
         company_arrival TEXT,
-        plant_run_hours TEXT,
+        dr_no TEXT,
         plant_odo_departure TEXT,
         plant_odo_arrival TEXT,
-        plant_kms_run TEXT,
+        si_no TEXT,
         drop_number INTEGER NOT NULL,
         customer TEXT,
         address TEXT,
@@ -108,10 +108,16 @@ export const seedTestUser = async () => {
 // ---------------------
 // Timestamp Helper
 // ---------------------
-export const getLocalTimestamp = () => {
-  const now = new Date();
-  return now.toISOString().slice(0, 19).replace('T', ' ');
-};
+  export const getLocalTimestamp = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
 
 // ---------------------
 // Trip Logs Functions
@@ -122,7 +128,7 @@ export const addTripLog = async (tripLog) => {
     const result = await database.runAsync(
       `INSERT INTO trip_logs 
         (dlf_code, driver, helper, plate_no, trip_count, 
-         company_departure, company_arrival, plant_run_hours, plant_odo_departure, plant_odo_arrival, plant_kms_run, drop_number, customer, address, 
+         company_departure, company_arrival, dr_no, plant_odo_departure, plant_odo_arrival, si_no, drop_number, customer, address, 
          customer_arrival, customer_departure, remarks, created_by, created_at, synced, sync_status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -133,10 +139,10 @@ export const addTripLog = async (tripLog) => {
         tripLog.trip_count || null,
         tripLog.company_departure || null,
         tripLog.company_arrival || null,
-        tripLog.plant_run_hours || null,
+        tripLog.dr_no || null,
         tripLog.plant_odo_departure || null,
         tripLog.plant_odo_arrival || null,
-        tripLog.plant_kms_run || null,
+        tripLog.si_no || null,
         tripLog.drop_number,
         tripLog.customer || null,
         tripLog.address || null,
@@ -163,7 +169,7 @@ export const updateTripLog = async (id, tripLog) => {
     await database.runAsync(
       `UPDATE trip_logs 
        SET dlf_code = ?, driver = ?, helper = ?, plate_no = ?, trip_count = ?, company_departure = ?, company_arrival = ?,
-           plant_run_hours = ?, plant_odo_departure = ?, plant_odo_arrival = ?, plant_kms_run = ?, drop_number = ?,
+           dr_no = ?, plant_odo_departure = ?, plant_odo_arrival = ?, si_no = ?, drop_number = ?,
            customer = ?, address = ?, customer_arrival = ?, customer_departure = ?, remarks = ?, synced = ?, sync_status = ?
        WHERE id = ?`,
       [
@@ -174,10 +180,10 @@ export const updateTripLog = async (id, tripLog) => {
         tripLog.trip_count || null,
         tripLog.company_departure || null,
         tripLog.company_arrival || null,
-        tripLog.plant_run_hours || null,
+        tripLog.dr_no || null,
         tripLog.plant_odo_departure || null,
         tripLog.plant_odo_arrival || null,
-        tripLog.plant_kms_run || null,
+        tripLog.si_no || null,
         tripLog.drop_number,
         tripLog.customer || null,
         tripLog.address || null,
@@ -241,17 +247,6 @@ export const getNextDropNumber = async (deliveryId) => {
   }
 };
 
-// Mark draft as ready to sync (synced = 0)
-export const markAsReadyToSync = async (id) => {
-  try {
-    const database = ensureDbInitialized();
-    await database.runAsync('UPDATE trip_logs SET synced = 0 WHERE id = ?', [id]);
-  } catch (error) {
-    console.error('Mark ready to sync error:', error);
-    throw error;
-  }
-};
-
 // Mark trip as synced (synced = 1)
 export const markTripAsSynced = async (id) => {
   try {
@@ -260,18 +255,6 @@ export const markTripAsSynced = async (id) => {
   } catch (error) {
     console.error('Mark as synced error:', error);
     throw error;
-  }
-};
-
-// Get draft trip logs
-export const getDraftTripLogs = async () => {
-  try {
-    const database = ensureDbInitialized();
-    const logs = await database.getAllAsync('SELECT * FROM trip_logs WHERE synced = -1');
-    return logs;
-  } catch (error) {
-    console.error('Get draft logs error:', error);
-    return [];
   }
 };
 
