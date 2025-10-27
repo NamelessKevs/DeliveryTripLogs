@@ -1,5 +1,5 @@
 import * as Network from 'expo-network';
-import {getUnsyncedTripLogs, markTripAsSynced, getTripLogsByDeliveryId} from '../database/db';
+import {getUnsyncedTripLogs, markTripAsSynced, getTripLogsByDeliveryId, getExpensesByDeliveryId} from '../database/db';
 import {syncTripsToGoogleSheets} from '../api/tripApi';
 
 let isSyncing = false;
@@ -32,27 +32,34 @@ export const checkAndSync = async () => {
 
     console.log(`Syncing ${unsyncedLogs.length} trip logs to Google Sheets...`);
 
-    const tripsToSync = unsyncedLogs.map(log => ({
-      dlf_code: log.dlf_code,
-      driver: log.driver,
-      helper: log.helper,
-      plate_no: log.plate_no,
-      trip_count: log.trip_count,
-      company_departure: log.company_departure,
-      company_arrival: log.company_arrival,
-      dr_no: log.dr_no,
-      plant_odo_departure: log.plant_odo_departure,
-      plant_odo_arrival: log.plant_odo_arrival,
-      si_no: log.si_no,
-      drop_number: log.drop_number,
-      customer: log.customer,
-      address: log.address,
-      customer_arrival: log.customer_arrival,
-      customer_departure: log.customer_departure,
-      remarks: log.remarks,
-      created_at: log.created_at,
-      created_by: log.created_by,
-    }));
+    const tripsToSync = await Promise.all(
+      unsyncedLogs.map(async (log) => {
+        const expenses = await getExpensesByDeliveryId(log.dlf_code);
+        
+        return {
+          dlf_code: log.dlf_code,
+          driver: log.driver,
+          helper: log.helper,
+          plate_no: log.plate_no,
+          trip_count: log.trip_count,
+          company_departure: log.company_departure,
+          company_arrival: log.company_arrival,
+          dr_no: log.dr_no,
+          plant_odo_departure: log.plant_odo_departure,
+          plant_odo_arrival: log.plant_odo_arrival,
+          si_no: log.si_no,
+          drop_number: log.drop_number,
+          customer: log.customer,
+          address: log.address,
+          customer_arrival: log.customer_arrival,
+          customer_departure: log.customer_departure,
+          remarks: log.remarks,
+          created_at: log.created_at,
+          created_by: log.created_by,
+          expense_details: JSON.stringify(expenses), // ← Add expenses as JSON
+        };
+      })
+    );
 
     console.log('📤 Syncing data:', JSON.stringify(tripsToSync, null, 2));
 

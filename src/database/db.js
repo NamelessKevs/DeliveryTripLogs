@@ -45,6 +45,24 @@ export const initDatabase = async () => {
     `);
 
     await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS cached_expense_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_type TEXT UNIQUE NOT NULL,
+        cached_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS delivery_expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        dlf_code TEXT NOT NULL,
+        expense_type TEXT NOT NULL,
+        amount TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await db.execAsync(`
       CREATE TABLE IF NOT EXISTS trip_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         dlf_code TEXT NOT NULL,
@@ -285,6 +303,92 @@ export const deleteTripLog = async (id) => {
     await db.runAsync('DELETE FROM trip_logs WHERE id = ?', [id]);
   } catch (error) {
     console.error('Delete log error:', error);
+  }
+};
+
+// ---------------------
+// Delivery Expenses Functions
+// ---------------------
+export const addExpense = async (expense) => {
+  try {
+    const database = ensureDbInitialized();
+    const result = await database.runAsync(
+      `INSERT INTO delivery_expenses 
+        (dlf_code, expense_type, amount, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [
+        expense.dlf_code,
+        expense.expense_type,
+        expense.amount,
+        expense.created_at || getLocalTimestamp(),
+      ]
+    );
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error('Add expense error:', error);
+    throw error;
+  }
+};
+
+export const getExpensesByDeliveryId = async (deliveryId) => {
+  try {
+    const database = ensureDbInitialized();
+    const expenses = await database.getAllAsync(
+      'SELECT * FROM delivery_expenses WHERE dlf_code = ? ORDER BY id ASC',
+      [deliveryId]
+    );
+    return expenses.map(exp => ({
+      id: exp.id,
+      type: exp.expense_type,
+      amount: parseFloat(exp.amount),
+    }));
+  } catch (error) {
+    console.error('Get expenses by delivery ID error:', error);
+    return [];
+  }
+};
+
+export const deleteExpense = async (id) => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync('DELETE FROM delivery_expenses WHERE id = ?', [id]);
+  } catch (error) {
+    console.error('Delete expense error:', error);
+    throw error;
+  }
+};
+
+// ---------------------
+// Cached Expense Types Functions
+// ---------------------
+export const saveCachedExpenseTypes = async (expenseTypes) => {
+  try {
+    const database = ensureDbInitialized();
+    
+    for (const type of expenseTypes) {
+      await database.runAsync(
+        `INSERT OR REPLACE INTO cached_expense_types 
+          (expense_type, cached_at)
+         VALUES (?, ?)`,
+        [type, getLocalTimestamp()]
+      );
+    }
+  } catch (error) {
+    console.error('Save cached expense types error:', error);
+    throw error;
+  }
+};
+
+export const getCachedExpenseTypes = async () => {
+  try {
+    const database = ensureDbInitialized();
+    const types = await database.getAllAsync(
+      'SELECT expense_type FROM cached_expense_types ORDER BY expense_type ASC'
+    );
+    return types.map(t => t.expense_type);
+  } catch (error) {
+    console.error('Get cached expense types error:', error);
+    return [];
   }
 };
 

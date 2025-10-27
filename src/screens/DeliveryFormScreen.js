@@ -22,10 +22,16 @@ import {
   updateCompanyTimes,
   getNextDropNumber,
   getLocalTimestamp,
-  getAllTripLogs
+  getAllTripLogs,
+  addExpense,
+  getExpensesByDeliveryId,
+  deleteExpense,
+  getCachedExpenseTypes,
+  saveCachedExpenseTypes
 } from '../database/db';
 import { fetchDeliveriesFromAPI } from '../api/deliveryApi';
 import CustomerDropModal from '../components/CustomerDropModal';
+import ExpenseModal from '../components/ExpenseModal';
 
 const DeliveryFormScreen = ({ navigation, route }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -54,6 +60,11 @@ const DeliveryFormScreen = ({ navigation, route }) => {
   const [plantOdoDeparture, setPlantOdoDeparture] = useState('');
   const [plantOdoArrival, setPlantOdoArrival] = useState('');
   const [siNo, setSiNo] = useState('');
+
+  // Expenses
+  const [expenses, setExpenses] = useState([]);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [expenseTypes, setExpenseTypes] = useState([]);
 
   useEffect(() => {
     loadInitialData();
@@ -102,6 +113,9 @@ const DeliveryFormScreen = ({ navigation, route }) => {
       // Load cached deliveries
       const cached = await getCachedDeliveries();
       setDeliveries(cached);
+
+      const types = await getCachedExpenseTypes();
+      setExpenseTypes(types);
       
       // Load all trips to check used dlf_codes
       const trips = await getAllTripLogs();
@@ -140,6 +154,12 @@ const DeliveryFormScreen = ({ navigation, route }) => {
         // Reload cached deliveries
         const cached = await getCachedDeliveries();
         setDeliveries(cached);
+
+        // Save expense types to cache if available
+        if (result.expense_types && result.expense_types.length > 0) {
+          await saveCachedExpenseTypes(result.expense_types);
+          setExpenseTypes(result.expense_types);
+        }
         
         Alert.alert('Success', `Fetched ${cached.length} deliveries`);
       } else {
@@ -159,6 +179,9 @@ const DeliveryFormScreen = ({ navigation, route }) => {
     // Load existing drop logs for this delivery
     const logs = await getTripLogsByDeliveryId(delivery.dlf_code);
     setDropLogs(logs);
+
+    const deliveryExpenses = await getExpensesByDeliveryId(delivery.dlf_code);
+    setExpenses(deliveryExpenses);
     
     // Load company times from first log if exists
     if (logs.length > 0) {
@@ -249,6 +272,61 @@ const DeliveryFormScreen = ({ navigation, route }) => {
       Alert.alert('Error', error.message);
     }
   };
+
+  const handleAddExpense = () => {
+  if (!selectedDelivery) {
+    Alert.alert('Error', 'Please select a delivery first');
+    return;
+  }
+  setShowExpenseModal(true);
+};
+
+const handleSaveExpense = async (expenseType, amount) => {
+  try {
+    await addExpense({
+      dlf_code: selectedDelivery.dlf_code,
+      expense_type: expenseType,
+      amount: amount,
+      created_at: getLocalTimestamp(),
+    });
+    
+    // Reload expenses
+    const deliveryExpenses = await getExpensesByDeliveryId(selectedDelivery.dlf_code);
+    setExpenses(deliveryExpenses);
+    setShowExpenseModal(false);
+    
+    Alert.alert('Success', 'Expense added');
+  } catch (error) {
+    Alert.alert('Error', error.message);
+  }
+};
+
+const handleDeleteExpense = async (expenseId) => {
+  Alert.alert(
+    'Delete Expense',
+    'Are you sure you want to delete this expense?',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteExpense(expenseId);
+            
+            // Reload expenses
+            const deliveryExpenses = await getExpensesByDeliveryId(selectedDelivery.dlf_code);
+            setExpenses(deliveryExpenses);
+            
+            Alert.alert('Success', 'Expense deleted');
+          } catch (error) {
+            Alert.alert('Error', error.message);
+          }
+        },
+      },
+    ]
+  );
+};
 
 const handleSaveDraft = async () => {
   if (!selectedDelivery) {
@@ -509,6 +587,39 @@ const handleSaveDraft = async () => {
               </TouchableOpacity>
             </View>
 
+            {/* Expenses Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Expenses</Text>
+              
+              {/* Expense List */}
+              {expenses.length > 0 && (
+                <View style={{ marginBottom: 15 }}>
+                  {expenses.map((expense, idx) => (
+                    <View key={idx} style={styles.expenseCard}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.expenseType}>{expense.type}</Text>
+                        <Text style={styles.expenseAmount}>₱{expense.amount}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.deleteExpenseButton}
+                        onPress={() => handleDeleteExpense(expense.id)}
+                      >
+                        <Text style={styles.deleteExpenseButtonText}>🗑️ Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              {/* Add Expense Button */}
+              <TouchableOpacity
+                style={styles.addExpenseButton}
+                onPress={handleAddExpense}
+              >
+                <Text style={styles.addExpenseButtonText}>+ Add Expense</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Plant Metrics */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Plant Metrics</Text>
@@ -638,6 +749,15 @@ const handleSaveDraft = async () => {
         onCancel={() => setShowDropModal(false)}
         />
       )}
+      {/* Expense Modal */}
+      {showExpenseModal && (
+        <ExpenseModal
+          visible={showExpenseModal}
+          expenseTypes={expenseTypes}
+          onSave={handleSaveExpense}
+          onCancel={() => setShowExpenseModal(false)}
+        />
+      )}
     </View>
   );
 };
@@ -669,6 +789,48 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 20,
+  },
+  expenseCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  expenseType: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  expenseAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#10dc17ff',
+  },
+  addExpenseButton: {
+    backgroundColor: '#1FCFFF',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  addExpenseButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  deleteExpenseButton: {
+    backgroundColor: '#ff4444',
+    padding: 8,
+    borderRadius: 6,
+  },
+  deleteExpenseButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   deliveryItemUsed: {
     backgroundColor: '#f0f0f0',
