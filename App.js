@@ -9,6 +9,8 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import UserManagementScreen from './src/screens/UserManagementScreen';
 import DeliveryFormScreen from './src/screens/DeliveryFormScreen';
+import * as Location from 'expo-location';
+import { Alert } from 'react-native'; // Add this import
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +22,16 @@ export default function App() {
       try {
         await initDatabase();
         await seedTestUser();
+        
+        // Request location permission
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert(
+            'Permission Required', 
+            'Location access is needed to log delivery locations accurately.'
+          );
+        }
+        
         console.log('App initialized');
         setIsReady(true);
         

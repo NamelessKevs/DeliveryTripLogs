@@ -115,7 +115,7 @@ export const seedTestUser = async () => {
     await database.runAsync(
       `INSERT OR IGNORE INTO users (first_name, middle_name, last_name, username, password)
        VALUES (?, ?, ?, ?, ?)`,
-      ['Ivan Paul', 'Yacap', 'Maravilla', 'test', 'test']
+      ['Erwin', 'Moya', 'Flores', 'test', 'test']
     );
     console.log('Test user seeded');
   } catch (error) {

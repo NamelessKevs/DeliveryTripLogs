@@ -334,10 +334,10 @@ const handleSaveDraft = async () => {
     return;
   }
   
-  if (!companyDeparture) {
-    Alert.alert('Error', 'Please capture company departure time');
-    return;
-  }
+  // if (!companyDeparture) {
+  //   Alert.alert('Error', 'Please capture company departure time');
+  //   return;
+  // }
   
   try {
     // Check if drop 0 already exists for this delivery
@@ -568,7 +568,7 @@ const handleSaveDraft = async () => {
 
             {/* Company Times */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Company Times</Text>
+              <Text style={styles.sectionTitle}>Trip Time Logs</Text>
               <TouchableOpacity
                 style={styles.captureButton}
                 onPress={handleCaptureCompanyDeparture}
@@ -622,7 +622,7 @@ const handleSaveDraft = async () => {
 
             {/* Plant Metrics */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Plant Metrics</Text>
+              <Text style={styles.sectionTitle}>Odometer Reaadings</Text>
               <Text style={styles.label}>Odometer Departure (km)</Text>
               <TextInput
                 style={styles.input}
@@ -683,7 +683,7 @@ const handleSaveDraft = async () => {
               style={styles.addDropButton}
               onPress={handleAddDrop}
             >
-              <Text style={styles.addDropButtonText}>+ Log Next Customer Drop</Text>
+              <Text style={styles.addDropButtonText}>+ Log Customer Drop</Text>
             </TouchableOpacity>
 
             {/* Draft / Finalize Buttons */}

@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+import * as Location from 'expo-location';
 
 const CustomerDropModal = ({ 
   visible, 
@@ -85,9 +86,25 @@ const CustomerDropModal = ({
     setSelectedCustomer(customerName);
   };
 
-  const handleCaptureArrival = () => {
+  const handleCaptureArrival = async () => {
     const now = formatDateTime(new Date());
     setArrivalTime(now);
+    
+    // Capture GPS coordinates
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Location Required', 'Please enable location access');
+        return;
+      }
+      
+      const location = await Location.getCurrentPositionAsync({});
+      const coords = `${location.coords.latitude}, ${location.coords.longitude}`;
+      setAddress(coords); // Store coordinates in address state
+    } catch (error) {
+      console.error('GPS error:', error);
+      setAddress('GPS unavailable');
+    }
   };
 
   const handleCaptureDeparture = () => {
@@ -106,10 +123,10 @@ const CustomerDropModal = ({
       return;
     }
 
-    if (!address.trim()) {
-      Alert.alert('Error', 'Please enter address');
-      return;
-    }
+    // if (!address.trim()) {
+    //   Alert.alert('Error', 'Please enter address');
+    //   return;
+    // }
 
     if (!arrivalTime) {
       Alert.alert('Error', 'Arrival time is required');
@@ -198,14 +215,14 @@ const CustomerDropModal = ({
             })}
 
             {/* Address Input */}
-            <Text style={styles.label}>📍 Address</Text>
+            {/* <Text style={styles.label}>📍 Address</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter delivery address"
               value={address}
               onChangeText={setAddress}
               multiline
-            />
+            /> */}
 
             {/* Arrival Time */}
             <Text style={styles.label}>Arrival Time <Text style={styles.required}>*</Text></Text>
