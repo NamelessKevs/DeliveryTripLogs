@@ -96,7 +96,8 @@ export const initDatabase = async () => {
         middle_name TEXT,
         last_name TEXT NOT NULL,
         username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        position TEXT DEFAULT 'Driver'
       );
     `);
 
@@ -113,9 +114,9 @@ export const seedTestUser = async () => {
   try {
     const database = ensureDbInitialized();
     await database.runAsync(
-      `INSERT OR IGNORE INTO users (first_name, middle_name, last_name, username, password)
-       VALUES (?, ?, ?, ?, ?)`,
-      ['Erwin', 'Moya', 'Flores', 'test', 'test']
+      `INSERT OR IGNORE INTO users (first_name, middle_name, last_name, username, password, position)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      ['Erwin', 'Moya', 'Flores', 'test', 'test', 'Driver']
     );
     console.log('Test user seeded');
   } catch (error) {
@@ -492,14 +493,15 @@ export const clearCachedDeliveries = async () => {
 export const registerUser = async (user) => {
   try {
     const result = await db.runAsync(
-      `INSERT INTO users (first_name, middle_name, last_name, username, password)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO users (first_name, middle_name, last_name, username, password, position)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         user.first_name,
         user.middle_name || null,
         user.last_name,
         user.username,
         user.password, // TODO: Add hashing later
+        user.position || 'Driver',
       ]
     );
     return result.lastInsertRowId;
@@ -535,12 +537,13 @@ export const getAllUsers = async () => {
 export const updateUser = async (id, user) => {
   try {
     // Build update query dynamically to handle optional password
-    let query = `UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, username = ?`;
+    let query = `UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, username = ?, position = ?`;
     let params = [
       user.first_name,
       user.middle_name || null,
       user.last_name,
       user.username,
+      user.position || 'Driver',
     ];
 
     // Only update password if provided

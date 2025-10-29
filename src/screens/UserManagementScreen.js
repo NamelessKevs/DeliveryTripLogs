@@ -20,12 +20,14 @@ const UserManagementScreen = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showPositionPicker, setShowPositionPicker] = useState(false);
   const [form, setForm] = useState({
     first_name: '',
     middle_name: '',
     last_name: '',
     username: '',
     password: '',
+    position: 'Driver',
   });
 
   const loadUsers = async () => {
@@ -73,6 +75,7 @@ const UserManagementScreen = ({ navigation }) => {
       last_name: user.last_name,
       username: user.username,
       password: '', // Leave password empty for security
+      position: user.position || 'Driver',
     });
     setModalVisible(true);
   };
@@ -89,6 +92,7 @@ const UserManagementScreen = ({ navigation }) => {
       middle_name: form.middle_name || null,
       last_name: form.last_name,
       username: form.username,
+      position: form.position,
     };
 
     // Only include password if it's been changed
@@ -177,7 +181,9 @@ const UserManagementScreen = ({ navigation }) => {
             {item.first_name} {item.middle_name ? item.middle_name + ' ' : ''}{item.last_name}
             {isCurrentUser && <Text style={styles.youBadge}> (You)</Text>}
           </Text>
-          <Text style={styles.userUsername}>@{item.username}</Text>
+          <Text style={styles.userUsername}>
+            @{item.username} • {item.position || 'Driver'}
+          </Text>
         </View>
         <View style={styles.actionButtons}>
           <TouchableOpacity
@@ -222,6 +228,28 @@ const UserManagementScreen = ({ navigation }) => {
               {editingUser ? 'Edit User' : 'Add New User'}
             </Text>
 
+            <Text style={styles.label}>Position</Text>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              onPress={() => setShowPositionPicker(true)}
+            >
+              <Text style={styles.dropdownText}>{form.position}</Text>
+            </TouchableOpacity>
+            <Modal visible={showPositionPicker} animationType="slide" transparent>
+              <View style={styles.modalOverlay}>
+                <View style={styles.pickerContent}>
+                  <Text style={styles.modalTitle}>Select Position</Text>
+                  {['Driver', 'Logistic Admin'].map((pos, idx) => (
+                    <TouchableOpacity key={idx} style={styles.pickerItem} onPress={() => {setPosition(pos); setShowPositionPicker(false);}}>
+                      <Text style={styles.pickerItemText}>{pos}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity style={styles.pickerCloseButton} onPress={() => setShowPositionPicker(false)}>
+                    <Text style={styles.pickerCloseButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
             <TextInput
               style={styles.input}
               placeholder="First Name"
@@ -277,6 +305,16 @@ const UserManagementScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 5 },
+  dropdownButton: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, backgroundColor: '#fff', marginBottom: 15 },
+  dropdownText: {fontSize: 16, color: '#333' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  pickerContent: { backgroundColor: '#fff', borderRadius: 12, padding: 20 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+  pickerItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
+  pickerItemText: { fontSize: 16, color: '#333' },
+  pickerCloseButton: { backgroundColor: '#ccc', padding: 5, borderRadius: 8, alignItems: 'center', marginTop: 10 },
+  pickerCloseButtonText: { color: '#333', fontSize: 12, padding: 5, fontWeight: '600' },
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   list: { padding: 15 },
   userCard: {
