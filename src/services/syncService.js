@@ -1,6 +1,6 @@
 import * as Network from 'expo-network';
-import {getUnsyncedTripLogs, markTripAsSynced, getTripLogsByDeliveryId, getExpensesByDeliveryId} from '../database/db';
-import {syncTripsToGoogleSheets} from '../api/tripApi';
+import {getUnsyncedTripLogs, markTripAsSynced, getTripLogsByDeliveryId, getExpensesByDeliveryId,getUnsyncedFuelRecords, markFuelRecordAsSynced} from '../database/db';
+import {syncTripsToGoogleSheets, syncFuelToGoogleSheets} from '../api/tripApi';
 
 let isSyncing = false;
 
@@ -98,6 +98,82 @@ export const checkAndSync = async () => {
   }
 };
 
+export const checkAndSyncFuel = async () => {
+  // Prevent concurrent syncs
+  if (isSyncing) {
+    console.log('Sync already in progress, skipping...');
+    return {success: false, message: 'Sync already in progress'};
+  }
+
+  try {
+    isSyncing = true;
+    
+    const networkState = await Network.getNetworkStateAsync();
+    
+    console.log('Network State:', networkState);
+    
+    if (!networkState.isConnected || !networkState.isInternetReachable) {
+      console.log('No internet connection');
+      return {success: false, message: 'No internet connection'};
+    }
+
+    const unsyncedRecords = await getUnsyncedFuelRecords();
+    
+    if (unsyncedRecords.length === 0) {
+      console.log('No fuel records to sync');
+      return {success: true, message: 'No fuel records to sync', synced: 0};
+    }
+
+    console.log(`Syncing ${unsyncedRecords.length} fuel records to Google Sheets...`);
+
+    const recordsToSync = unsyncedRecords.map(record => ({
+      tfp_id: record.tfp_id,
+      utility_driver: record.utility_driver,
+      truck_plate: record.truck_plate,
+      type: record.type,
+      cash_advance: record.cash_advance,
+      departure_time: record.departure_time,
+      odometer_readings: record.odometer_readings,
+      invoice_date: record.invoice_date,
+      reference_no: record.reference_no,
+      particular: record.particular,
+      payee: record.payee,
+      total_liters: record.total_liters,
+      cost_per_liter: record.cost_per_liter,
+      total_amount: record.total_amount,
+      vat_amount: record.vat_amount,
+      net_amount: record.net_amount,
+      arrival_time: record.arrival_time,
+      created_at: record.created_at,
+      created_by: record.created_by,
+    }));
+
+    console.log('📤 Syncing fuel data:', JSON.stringify(recordsToSync, null, 2));
+
+    const result = await syncFuelToGoogleSheets(recordsToSync);
+
+    if (result.success) {
+      for (const record of unsyncedRecords) {
+        await markFuelRecordAsSynced(record.id);
+      }
+      
+      return {
+        success: true,
+        message: `Successfully synced ${result.created} fuel records to Google Sheets`,
+        synced: result.created,
+        details: result,
+      };
+    }
+
+    return {success: false, message: 'Sync failed', details: result};
+  } catch (error) {
+    console.error('Fuel sync service error:', error);
+    return {success: false, message: error.message};
+  } finally {
+    isSyncing = false;
+  }
+};
+
 export const startAutoSync = () => {
   let intervalId;
   
@@ -105,7 +181,10 @@ export const startAutoSync = () => {
     const networkState = await Network.getNetworkStateAsync();
     if (networkState.isConnected && networkState.isInternetReachable) {
       console.log('Internet connected, attempting auto-sync...');
+      // Sync trip logs
       await checkAndSync();
+      // Sync fuel records
+      await checkAndSyncFuel();
     }
   };
   

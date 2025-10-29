@@ -17,7 +17,13 @@ const LoginScreen = () => {
       const user = await loginUser(username, password);
       if (user) {
         await setCurrentUser(user);
-        navigation.reset({ index: 0, routes: [{ name: 'TripList' }] });
+        
+        // Navigate based on user position
+        if (user.position === 'Service Vehicle Driver') {
+          navigation.reset({ index: 0, routes: [{ name: 'Monitoring' }] });
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: 'TripList' }] });
+        }
       } else {
         Alert.alert('Error', 'Invalid username or password');
       }

@@ -239,7 +239,7 @@ const UserManagementScreen = ({ navigation }) => {
               <View style={styles.modalOverlay}>
                 <View style={styles.pickerContent}>
                   <Text style={styles.modalTitle}>Select Position</Text>
-                  {['Driver', 'Logistic Admin'].map((pos, idx) => (
+                  {['Driver', 'Service Vehicle Driver'].map((pos, idx) => (
                     <TouchableOpacity key={idx} style={styles.pickerItem} onPress={() => {setPosition(pos); setShowPositionPicker(false);}}>
                       <Text style={styles.pickerItemText}>{pos}</Text>
                     </TouchableOpacity>

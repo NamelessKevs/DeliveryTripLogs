@@ -9,8 +9,10 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import UserManagementScreen from './src/screens/UserManagementScreen';
 import DeliveryFormScreen from './src/screens/DeliveryFormScreen';
+import MonitoringScreen from './src/screens/MonitoringScreen';
+import TruckFuelFormScreen from './src/screens/TruckFuelFormScreen';
 import * as Location from 'expo-location';
-import { Alert } from 'react-native'; // Add this import
+import { Alert } from 'react-native';
 
 const Stack = createNativeStackNavigator();
 
@@ -90,6 +92,18 @@ export default function App() {
           options={({ route }) => ({ 
             title: route.params?.deliveryToEdit ? 'Edit Delivery' : 'Log Delivery (New)' 
           })} 
+        />
+        <Stack.Screen
+          name="Monitoring"
+          component={MonitoringScreen}
+          options={{ title: 'Truck Fuel Monitoring' }}
+        />
+        <Stack.Screen
+          name="TruckFuelForm"
+          component={TruckFuelFormScreen}
+          options={({ route }) => ({ 
+            title: route.params?.recordToEdit ? 'Edit Fuel Record' : 'Log Fuel (New)' 
+          })}
         />
         <Stack.Screen name="Accounts" component={UserManagementScreen} />
       </Stack.Navigator>

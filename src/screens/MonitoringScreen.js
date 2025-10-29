@@ -9,48 +9,48 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import {getAllTripLogs, deleteTripLog} from '../database/db';
-import {checkAndSync} from '../services/syncService';
+import {getAllFuelRecords, deleteFuelRecord, getCurrentUser} from '../database/db';
+import {checkAndSyncFuel} from '../services/syncService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TripListScreen = ({navigation}) => {
-  const [trips, setTrips] = useState([]);
+const MonitoringScreen = ({navigation}) => {
+  const [fuelRecords, setFuelRecords] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const loadTrips = async () => {
+  const loadFuelRecords = async () => {
     try {
-      const allTrips = await getAllTripLogs();
-      setTrips(allTrips);
+      const allRecords = await getAllFuelRecords();
+      setFuelRecords(allRecords);
     } catch (error) {
-      console.error('Load trips error:', error);
+      console.error('Load fuel records error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadTrips();
+    loadFuelRecords();
     const unsubscribe = navigation.addListener('focus', () => {
-      loadTrips();
+      loadFuelRecords();
     });
     return unsubscribe;
   }, [navigation]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadTrips();
+    await loadFuelRecords();
     setRefreshing(false);
   }, []);
 
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const result = await checkAndSync();
+      const result = await checkAndSyncFuel();
       if (result.success) {
         Alert.alert('Success', result.message);
-        await loadTrips();
+        await loadFuelRecords();
       } else {
         Alert.alert('Sync Failed', result.message);
       }
@@ -61,16 +61,16 @@ const TripListScreen = ({navigation}) => {
     }
   };
 
-  const handleEditDraft = (delivery) => {
-    navigation.navigate('DeliveryForm', { 
-      deliveryToEdit: delivery 
+  const handleEditDraft = (record) => {
+    navigation.navigate('TruckFuelForm', { 
+      recordToEdit: record 
     });
   };
 
-  const handleDeleteDraft = (delivery) => {
+  const handleDeleteDraft = (record) => {
     Alert.alert(
-      'Delete Delivery',
-      `Delete entire delivery ${delivery.dlf_code} and all its drops?`,
+      'Delete Fuel Record',
+      `Delete fuel record ${record.tfp_id}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -78,18 +78,11 @@ const TripListScreen = ({navigation}) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Delete all drops with this dlf_code
-              const allTrips = await getAllTripLogs();
-              const tripsToDelete = allTrips.filter(t => t.dlf_code === delivery.dlf_code);
-              
-              for (const trip of tripsToDelete) {
-                await deleteTripLog(trip.id);
-              }
-              
-              Alert.alert('Success', 'Delivery deleted');
-              await loadTrips();
+              await deleteFuelRecord(record.id);
+              Alert.alert('Success', 'Fuel record deleted');
+              await loadFuelRecords();
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete delivery');
+              Alert.alert('Error', 'Failed to delete fuel record');
             }
           },
         },
@@ -124,131 +117,55 @@ const TripListScreen = ({navigation}) => {
     }
   };
 
-const groupTripsByDelivery = (trips) => {
-  const grouped = {};
-  
-  trips.forEach(trip => {
-    if (!trip.dlf_code) return;
-    
-    if (!grouped[trip.dlf_code]) {
-      grouped[trip.dlf_code] = {
-        dlf_code: trip.dlf_code,
-        driver: trip.driver,
-        helper: trip.helper,
-        plate_no: trip.plate_no,
-        trip_count: trip.trip_count,
-        company_departure: trip.company_departure,
-        company_arrival: trip.company_arrival,
-        dr_no: trip.dr_no,
-        plant_odo_departure: trip.plant_odo_departure,
-        plant_odo_arrival: trip.plant_odo_arrival,
-        si_no: trip.si_no,
-        created_by: trip.created_by,
-        created_at: trip.created_at,
-        drops: [],
-        synced: null,
-      };
-    } else {
-      // Update plant metrics if current trip has values and grouped doesn't
-      if (trip.dr_no && !grouped[trip.dlf_code].dr_no) {
-        grouped[trip.dlf_code].dr_no = trip.dr_no;
-      }
-      if (trip.plant_odo_departure && !grouped[trip.dlf_code].plant_odo_departure) {
-        grouped[trip.dlf_code].plant_odo_departure = trip.plant_odo_departure;
-      }
-      if (trip.plant_odo_arrival && !grouped[trip.dlf_code].plant_odo_arrival) {
-        grouped[trip.dlf_code].plant_odo_arrival = trip.plant_odo_arrival;
-      }
-      if (trip.si_no && !grouped[trip.dlf_code].si_no) {
-        grouped[trip.dlf_code].si_no = trip.si_no;
-      }
-      // Always update company times to latest
-      grouped[trip.dlf_code].company_departure = trip.company_departure || grouped[trip.dlf_code].company_departure;
-      grouped[trip.dlf_code].company_arrival = trip.company_arrival || grouped[trip.dlf_code].company_arrival;
-    }
-    
-    // Add drop to list (skip drop_number 0 placeholders in display)
-    if (trip.drop_number > 0) {
-      grouped[trip.dlf_code].drops.push(trip);
-    }
-    
-    // Track synced status from ALL drops (including drop 0)
-    if (grouped[trip.dlf_code].synced === null) {
-      grouped[trip.dlf_code].synced = trip.synced;
-    } else if (trip.synced === -1) {
-      grouped[trip.dlf_code].synced = -1; // Draft takes priority
-    } else if (trip.synced === 0 && grouped[trip.dlf_code].synced !== -1) {
-      grouped[trip.dlf_code].synced = 0; // Pending
-    }
-  });
-  
-  return Object.values(grouped);
-};
-
-  const getStatusBadge = (item) => {
-    if (item.synced === 1) {
+  const getStatusBadge = (synced) => {
+    if (synced === 1) {
       return { text: 'Synced', style: styles.syncedBadge };
-    } else if (item.synced === 0) {
+    } else if (synced === 0) {
       return { text: 'Pending', style: styles.unsyncedBadge };
     } else {
       return { text: 'Draft', style: styles.draftBadge };
     }
   };
 
-  const renderDelivery = ({item}) => {
-    const badge = getStatusBadge(item);
+  const renderFuelRecord = ({item}) => {
+    const badge = getStatusBadge(item.synced);
     const isDraft = item.synced === -1;
     
     return (
-      <View style={styles.tripCard}>
-        <View style={styles.tripHeader}>
-          <Text style={styles.driverName}>{item.dlf_code}</Text>
+      <View style={styles.recordCard}>
+        <View style={styles.recordHeader}>
+          <Text style={styles.tfpId}>{item.tfp_id}</Text>
           <View style={[styles.badge, badge.style]}>
             <Text style={styles.badgeText}>{badge.text}</Text>
           </View>
         </View>
         
-        <Text style={styles.truckPlate}>👤 {item.driver}</Text>
-        {item.helper && (
-          <Text style={styles.truckPlate}>🤝 {item.helper}</Text>
+        <Text style={styles.recordDetail}>👤 Driver: {item.utility_driver}</Text>
+        <Text style={styles.recordDetail}>🚚 Truck: {item.truck_plate}</Text>
+        {item.type && (
+          <Text style={styles.recordDetail}>💳 Type: {item.type}</Text>
         )}
-        <Text style={styles.truckPlate}>🚚 {item.plate_no} | Trip {item.trip_count}</Text>
-        <Text style={styles.truckPlate}>DR No#: {item.dr_no}</Text>
-        <Text style={styles.truckPlate}>SI No#: {item.si_no}</Text>
-        <Text style={styles.truckPlate}>ODO Depart: {item.plant_odo_departure} | ODO Arrive: {item.plant_odo_arrival}</Text>
+        {item.cash_advance && (
+          <Text style={styles.recordDetail}>💵 Cash Advance: ₱{item.cash_advance}</Text>
+        )}
         
-        <View style={styles.timeContainer}>
-          <View style={styles.timeRow}>
-            <Text style={styles.timeLabel}>Depart:</Text>
-            <Text style={styles.timeText}>{formatDateTime(item.company_departure)}</Text>
-          </View>
-          {item.company_arrival && (
+        {item.departure_time && (
+          <View style={styles.timeContainer}>
             <View style={styles.timeRow}>
-              <Text style={styles.timeLabel}>Arrival:</Text>
-              <Text style={styles.timeText}>{formatDateTime(item.company_arrival)}</Text>
+              <Text style={styles.timeLabel}>Depart:</Text>
+              <Text style={styles.timeText}>{formatDateTime(item.departure_time)}</Text>
             </View>
-          )}
-        </View>
-
-        {/* Drops Section */}
-        {item.drops.length > 0 ? (
-          <View style={styles.routeContainer}>
-            <Text style={styles.locationLabel}>Drops:</Text>
-            {item.drops.map((drop, idx) => (
-              <View key={drop.id} style={{marginTop: 8}}>
-                <Text style={styles.locationText}>
-                  {drop.drop_number}. {drop.customer}
-                </Text>
-                <Text style={styles.timeText}>
-                    {formatDateTime(drop.customer_arrival)} - {formatDateTime(drop.customer_departure)}
-                </Text>
+            {item.arrival_time && (
+              <View style={styles.timeRow}>
+                <Text style={styles.timeLabel}>Arrival:</Text>
+                <Text style={styles.timeText}>{formatDateTime(item.arrival_time)}</Text>
               </View>
-            ))}
+            )}
           </View>
-        ) : (
-          <View style={styles.routeContainer}>
-            <Text style={styles.remarks}>No drops logged yet</Text>
-          </View>
+        )}
+
+        {item.total_amount && (
+          <Text style={styles.totalAmount}>Total: ₱{item.total_amount}</Text>
         )}
 
         {item.created_by && (
@@ -276,20 +193,19 @@ const groupTripsByDelivery = (trips) => {
     );
   };
 
-  const groupedDeliveries = groupTripsByDelivery(trips);
-  const draftCount = groupedDeliveries.filter(d => d.synced === -1).length;
-  const unsyncedCount = groupedDeliveries.filter(d => d.synced === 0).length;
+  const draftCount = fuelRecords.filter(r => r.synced === -1).length;
+  const unsyncedCount = fuelRecords.filter(r => r.synced === 0).length;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Trip Logs</Text>
+          <Text style={styles.title}>Fuel Monitoring</Text>
         </View>
         <View>
-        <Text style={styles.count}>
-          Total: {groupedDeliveries.length} | Drafts: {draftCount} | Pending: {unsyncedCount}
-        </Text>
+          <Text style={styles.count}>
+            Total: {fuelRecords.length} | Drafts: {draftCount} | Pending: {unsyncedCount}
+          </Text>
         </View>
       </View>
 
@@ -302,45 +218,42 @@ const groupTripsByDelivery = (trips) => {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.syncButtonText}>
-              Sync {unsyncedCount} Trips to Google Sheets
+              Sync {unsyncedCount} Records to Google Sheets
             </Text>
           )}
         </TouchableOpacity>
       )}
 
-      {trips.length === 0 ? (
+      {fuelRecords.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No delivery trip logs</Text>
+          <Text style={styles.emptyText}>No fuel records</Text>
         </View>
       ) : (
         <FlatList
-          data={groupTripsByDelivery(trips)}
-          renderItem={renderDelivery}
-          keyExtractor={item => item.dlf_code}
+          data={fuelRecords}
+          renderItem={renderFuelRecord}
+          keyExtractor={item => item.id.toString()}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         />
-)}
+      )}
 
-      {/* FABs - Show based on user position */}
       <TouchableOpacity
         style={styles.fabAccount}
         onPress={handleUserManagement}>
-        <Text style={styles.fab3Text}>🔑</Text>
+        <Text style={styles.fabAccountText}>🔑</Text>
       </TouchableOpacity>
-
       <TouchableOpacity
         style={styles.fabLogout}
         onPress={handleLogout}>
         <Text style={styles.fabLogoutText}>↩️</Text>
       </TouchableOpacity>
-
       <TouchableOpacity
         style={styles.fabForm}
-        onPress={() => navigation.navigate('DeliveryForm')}>
-        <Text style={styles.fabFormText}>🚚</Text>
+        onPress={() => navigation.navigate('TruckFuelForm')}>
+        <Text style={styles.fabFormText}>⛽</Text>
       </TouchableOpacity>
     </View>
   );
@@ -382,7 +295,7 @@ const styles = StyleSheet.create({
   list: {
     padding: 15,
   },
-  tripCard: {
+  recordCard: {
     backgroundColor: '#fff',
     padding: 15,
     borderRadius: 10,
@@ -393,13 +306,13 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  tripHeader: {
+  recordHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  driverName: {
+  tfpId: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
@@ -423,42 +336,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  truckPlate: {
+  recordDetail: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 10,
-  },
-  routeContainer: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    marginVertical: 8,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-    width: 50,
-  },
-  locationText: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-  },
-  arrow: {
-    fontSize: 16,
-    color: '#1FCFFF',
-    textAlign: 'center',
-    marginVertical: 4,
+    marginBottom: 4,
   },
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 8,
+    marginBottom: 8,
   },
   timeRow: {
     flex: 1,
@@ -472,11 +359,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#333',
   },
-  remarks: {
-    fontSize: 13,
-    color: '#666',
+  totalAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#10dc17ff',
     marginTop: 8,
-    fontStyle: 'italic',
   },
   createdBy: {
     fontSize: 12,
@@ -525,7 +412,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     color: '#999',
-    marginBottom: 20,
   },
   fabLogout: {
     position: 'absolute',
@@ -586,4 +472,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TripListScreen;
+export default MonitoringScreen;

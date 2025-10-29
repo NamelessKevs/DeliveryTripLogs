@@ -27,6 +27,7 @@ export const initDatabase = async () => {
       DROP TABLE IF EXISTS cached_deliveries;
       DROP TABLE IF EXISTS trip_logs;
       DROP TABLE IF EXISTS users;
+      DROP TABLE IF EXISTS truck_fuel_monitoring;
     `);
 
     // Recreate tables fresh
@@ -98,6 +99,33 @@ export const initDatabase = async () => {
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         position TEXT DEFAULT 'Driver'
+      );
+    `);
+
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS truck_fuel_monitoring (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tfp_id TEXT UNIQUE NOT NULL,
+        utility_driver TEXT NOT NULL,
+        truck_plate TEXT NOT NULL,
+        type TEXT,
+        cash_advance TEXT,
+        departure_time TEXT,
+        odometer_readings TEXT,
+        invoice_date TEXT,
+        reference_no TEXT,
+        particular TEXT DEFAULT 'Fuel',
+        payee TEXT,
+        total_liters TEXT,
+        cost_per_liter TEXT,
+        total_amount TEXT,
+        vat_amount TEXT,
+        net_amount TEXT,
+        arrival_time TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        created_by TEXT NOT NULL,
+        synced INTEGER DEFAULT 0,
+        sync_status TEXT DEFAULT 'no'
       );
     `);
 
@@ -597,5 +625,192 @@ export const logoutUser = async () => {
     await AsyncStorage.removeItem('current_user');
   } catch (error) {
     console.error('Logout user error:', error);
+  }
+};
+
+// ---------------------
+// Truck Fuel Monitoring Functions
+// ---------------------
+
+// Generate TFP ID
+export const generateTfpId = async () => {
+  try {
+    const database = ensureDbInitialized();
+    const result = await database.getAllAsync(
+      'SELECT MAX(id) as max_id FROM truck_fuel_monitoring'
+    );
+    const nextId = (result[0]?.max_id || 0) + 1;
+    return `TFP-${nextId}`;
+  } catch (error) {
+    console.error('Generate TFP ID error:', error);
+    return 'TFP-1';
+  }
+};
+
+// Add fuel record
+export const addFuelRecord = async (record) => {
+  try {
+    const database = ensureDbInitialized();
+    const result = await database.runAsync(
+      `INSERT INTO truck_fuel_monitoring 
+        (tfp_id, utility_driver, truck_plate, type, cash_advance,
+         departure_time, odometer_readings, invoice_date, reference_no, particular,
+         payee, total_liters, cost_per_liter, total_amount, vat_amount, net_amount,
+         arrival_time, created_at, created_by, synced, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        record.tfp_id,
+        record.utility_driver,
+        record.truck_plate,
+        record.type || null,
+        record.cash_advance || null,
+        record.departure_time || null,
+        record.odometer_readings || null,
+        record.invoice_date || null,
+        record.reference_no || null,
+        record.particular || 'Fuel',
+        record.payee || null,
+        record.total_liters || null,
+        record.cost_per_liter || null,
+        record.total_amount || null,
+        record.vat_amount || null,
+        record.net_amount || null,
+        record.arrival_time || null,
+        record.created_at || getLocalTimestamp(),
+        record.created_by,
+        record.synced || -1,
+        record.sync_status || 'no',
+      ]
+    );
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error('Add fuel record error:', error);
+    throw error;
+  }
+};
+
+// Update fuel record
+export const updateFuelRecord = async (id, record) => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync(
+      `UPDATE truck_fuel_monitoring 
+       SET utility_driver = ?, truck_plate = ?, type = ?, cash_advance = ?,
+           departure_time = ?, odometer_readings = ?, invoice_date = ?, reference_no = ?,
+           particular = ?, payee = ?, total_liters = ?, cost_per_liter = ?,
+           total_amount = ?, vat_amount = ?, net_amount = ?, arrival_time = ?,
+           synced = ?, sync_status = ?
+       WHERE id = ?`,
+      [
+        record.utility_driver,
+        record.truck_plate,
+        record.type || null,
+        record.cash_advance || null,
+        record.departure_time || null,
+        record.odometer_readings || null,
+        record.invoice_date || null,
+        record.reference_no || null,
+        record.particular || 'Fuel',
+        record.payee || null,
+        record.total_liters || null,
+        record.cost_per_liter || null,
+        record.total_amount || null,
+        record.vat_amount || null,
+        record.net_amount || null,
+        record.arrival_time || null,
+        record.synced,
+        record.sync_status || 'no',
+        id,
+      ]
+    );
+  } catch (error) {
+    console.error('Update fuel record error:', error);
+    throw error;
+  }
+};
+
+// Get all fuel records
+export const getAllFuelRecords = async () => {
+  try {
+    const database = ensureDbInitialized();
+    const records = await database.getAllAsync(
+      'SELECT * FROM truck_fuel_monitoring ORDER BY id DESC'
+    );
+    return records;
+  } catch (error) {
+    console.error('Get all fuel records error:', error);
+    return [];
+  }
+};
+
+// Get fuel record by ID
+export const getFuelRecordById = async (id) => {
+  try {
+    const database = ensureDbInitialized();
+    const result = await database.getAllAsync(
+      'SELECT * FROM truck_fuel_monitoring WHERE id = ?',
+      [id]
+    );
+    return result.length > 0 ? result[0] : null;
+  } catch (error) {
+    console.error('Get fuel record by ID error:', error);
+    return null;
+  }
+};
+
+// Get fuel record by TFP ID
+export const getFuelRecordByTfpId = async (tfpId) => {
+  try {
+    const database = ensureDbInitialized();
+    const result = await database.getAllAsync(
+      'SELECT * FROM truck_fuel_monitoring WHERE tfp_id = ?',
+      [tfpId]
+    );
+    return result.length > 0 ? result[0] : null;
+  } catch (error) {
+    console.error('Get fuel record by TFP ID error:', error);
+    return null;
+  }
+};
+
+// Get unsynced fuel records
+export const getUnsyncedFuelRecords = async () => {
+  try {
+    const database = ensureDbInitialized();
+    const records = await database.getAllAsync(
+      'SELECT * FROM truck_fuel_monitoring WHERE synced = 0'
+    );
+    return records;
+  } catch (error) {
+    console.error('Get unsynced fuel records error:', error);
+    return [];
+  }
+};
+
+// Mark fuel record as synced
+export const markFuelRecordAsSynced = async (id) => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync(
+      'UPDATE truck_fuel_monitoring SET synced = 1 WHERE id = ?',
+      [id]
+    );
+  } catch (error) {
+    console.error('Mark fuel record as synced error:', error);
+    throw error;
+  }
+};
+
+// Delete fuel record
+export const deleteFuelRecord = async (id) => {
+  try {
+    const database = ensureDbInitialized();
+    await database.runAsync(
+      'DELETE FROM truck_fuel_monitoring WHERE id = ?',
+      [id]
+    );
+  } catch (error) {
+    console.error('Delete fuel record error:', error);
+    throw error;
   }
 };
