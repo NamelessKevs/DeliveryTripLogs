@@ -20,7 +20,10 @@ import {
   updateFuelRecord,
   getFuelRecordByTfpId,
   getLocalTimestamp,
+  getCachedTrucks,
+  saveCachedTrucks,
 } from '../database/db';
+import { fetchTrucksFromAPI } from '../api/maintenanceApi';
 
 const TruckFuelFormScreen = ({ navigation, route }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -31,6 +34,9 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
   const [tfpId, setTfpId] = useState('');
   const [utilityDriver, setUtilityDriver] = useState('');
   const [truckPlate, setTruckPlate] = useState('');
+  const [showTruckPicker, setShowTruckPicker] = useState(false);
+  const [cachedTrucks, setCachedTrucks] = useState([]);
+  const [fetchingTrucks, setFetchingTrucks] = useState(false);
   const [type, setType] = useState('');
   const [cashAdvance, setCashAdvance] = useState('');
   const [showTypePicker, setShowTypePicker] = useState(false);
@@ -70,10 +76,18 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
         return;
       }
       setCurrentUser(user);
+
+      // Auto-fill driver name
+      const formattedName = getFormattedUserName(user);
+      setUtilityDriver(formattedName);
+
+      // Load cached trucks
+      const trucks = await getCachedTrucks();
+      setCachedTrucks(trucks);
       
       // Generate TFP ID for new record
       if (!route.params?.recordToEdit) {
-        const newTfpId = await generateTfpId();
+        const newTfpId = await generateTfpId(formattedName);
         setTfpId(newTfpId);
       }
     } catch (error) {
@@ -81,6 +95,25 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
       Alert.alert('Error', 'Failed to load data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFetchTrucks = async () => {
+    setFetchingTrucks(true);
+    try {
+      const result = await fetchTrucksFromAPI();
+      
+      if (result.success && result.data) {
+        await saveCachedTrucks(result.data);
+        setCachedTrucks(result.data);
+        Alert.alert('Success', `Loaded ${result.data.length} trucks`);
+      } else {
+        Alert.alert('Info', 'No trucks found');
+      }
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setFetchingTrucks(false);
     }
   };
 
@@ -133,13 +166,18 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
     }
   };
 
-  const getFormattedUserName = () => {
-    if (!currentUser) return '';
-    const firstName = currentUser.first_name || '';
-    const middleName = currentUser.middle_name || '';
-    const lastName = currentUser.last_name || '';
-    const middleInitial = middleName ? middleName.charAt(0).toUpperCase() + '.' : '';
-    return `${firstName} ${middleInitial} ${lastName}`.trim();
+  const getFormattedUserName = (user = currentUser) => {
+    if (!user) return '';
+    const firstName = user.first_name || '';
+    const middleName = user.middle_name || '';
+    const lastName = user.last_name || '';
+    
+    if (middleName) {
+      const middleInitial = middleName.charAt(0).toUpperCase() + '.';
+      return `${firstName} ${middleInitial} ${lastName}`;
+    } else {
+      return `${firstName} ${lastName}`;
+    }
   };
 
   // Calculate total amount when liters or cost changes
@@ -367,22 +405,91 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Information</Text>
           
-          <Text style={styles.label}>Service Vehicle Driver <Text style={styles.required}>*</Text></Text>
+          {/* <Text style={styles.label}>Service Vehicle Driver <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={styles.input}
             placeholder="Enter driver name"
             value={utilityDriver}
             onChangeText={setUtilityDriver}
+          /> */}
+
+          <Text style={styles.label}>Service Vehicle Driver <Text style={styles.required}>*</Text></Text>
+          <TextInput
+            style={[styles.input, styles.inputReadOnly]}
+            placeholder="Enter driver name"
+            value={utilityDriver}
+            editable={false}
           />
 
           <Text style={styles.label}>Truck Plate <Text style={styles.required}>*</Text></Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., ABC1234"
-            autoCapitalize="characters"
-            value={truckPlate}
-            onChangeText={setTruckPlate}
-          />
+          <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={styles.dropdownButtonInRow}
+              onPress={() => setShowTruckPicker(true)}
+            >
+              <Text style={styles.dropdownText}>
+                {truckPlate || 'Select truck...'}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.refreshIconButton}
+              onPress={handleFetchTrucks}
+              disabled={fetchingTrucks}
+            >
+              {fetchingTrucks ? (
+                <ActivityIndicator size="small" color="#1FCFFF" />
+              ) : (
+                <Text style={styles.refreshIcon}>🔄</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Truck Picker Modal */}
+          <Modal visible={showTruckPicker} animationType="slide" transparent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.pickerContent}>
+                <Text style={styles.modalTitle}>Select Truck</Text>
+                
+                {cachedTrucks.length === 0 ? (
+                  <View style={styles.emptyPickerContainer}>
+                    <Text style={styles.emptyPickerText}>No trucks cached</Text>
+                    <TouchableOpacity
+                      style={styles.fetchButton}
+                      onPress={handleFetchTrucks}
+                      disabled={fetchingTrucks}
+                    >
+                      <Text style={styles.fetchButtonText}>
+                        {fetchingTrucks ? 'Fetching...' : 'Fetch Trucks'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <ScrollView style={styles.pickerScroll}>
+                    {cachedTrucks.map((truck, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.pickerItem}
+                        onPress={() => {
+                          setTruckPlate(truck);
+                          setShowTruckPicker(false);
+                        }}
+                      >
+                        <Text style={styles.pickerItemText}>{truck}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+                
+                <TouchableOpacity
+                  style={styles.pickerCloseButton}
+                  onPress={() => setShowTruckPicker(false)}
+                >
+                  <Text style={styles.pickerCloseButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
 
           <Text style={styles.label}>Type</Text>
           <TouchableOpacity
@@ -701,6 +808,57 @@ const styles = StyleSheet.create({
   pickerCloseButtonText: {
     color: '#333',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  dropdownButtonInRow: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 15,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+  },
+  refreshIconButton: {
+    width: 50,
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#1FCFFF',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  refreshIcon: {
+    fontSize: 20,
+  },
+  pickerScroll: {
+    maxHeight: 300,
+  },
+  emptyPickerContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyPickerText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 15,
+  },
+  fetchButton: {
+    backgroundColor: '#1FCFFF',
+    padding: 12,
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  fetchButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

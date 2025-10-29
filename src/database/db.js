@@ -28,6 +28,7 @@ export const initDatabase = async () => {
       DROP TABLE IF EXISTS trip_logs;
       DROP TABLE IF EXISTS users;
       DROP TABLE IF EXISTS truck_fuel_monitoring;
+      DROP TABLE IF EXISTS cached_trucks;
     `);
 
     // Recreate tables fresh
@@ -101,6 +102,14 @@ export const initDatabase = async () => {
         position TEXT DEFAULT 'Driver'
       );
     `);
+
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS cached_trucks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        truck_plate TEXT UNIQUE NOT NULL,
+        cached_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `)
 
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS truck_fuel_monitoring (
@@ -633,17 +642,36 @@ export const logoutUser = async () => {
 // ---------------------
 
 // Generate TFP ID
-export const generateTfpId = async () => {
+export const generateTfpId = async (userName) => {
   try {
     const database = ensureDbInitialized();
     const result = await database.getAllAsync(
       'SELECT MAX(id) as max_id FROM truck_fuel_monitoring'
     );
     const nextId = (result[0]?.max_id || 0) + 1;
-    return `TFP-${nextId}`;
+    
+    // Extract initials from user name
+    const nameParts = userName.trim().split(' ').filter(part => part.length > 0);
+    let initials = '';
+    
+    if (nameParts.length >= 2) {
+      // Has at least first and last name
+      const firstName = nameParts[0];
+      const lastName = nameParts[nameParts.length - 1];
+      const middleName = nameParts.length > 2 ? nameParts[nameParts.length - 2] : '';
+      
+      initials = firstName.charAt(0).toUpperCase() + 
+                 (middleName ? middleName.charAt(0).toUpperCase() : '') + 
+                 lastName.charAt(0).toUpperCase();
+    } else if (nameParts.length === 1) {
+      // Only one name
+      initials = nameParts[0].substring(0, 3).toUpperCase();
+    }
+    
+    return `TFP-${nextId}-${initials}`;
   } catch (error) {
     console.error('Generate TFP ID error:', error);
-    return 'TFP-1';
+    return 'TFP-1-XXX';
   }
 };
 
@@ -812,5 +840,42 @@ export const deleteFuelRecord = async (id) => {
   } catch (error) {
     console.error('Delete fuel record error:', error);
     throw error;
+  }
+};
+
+// ---------------------
+// Cached Trucks Functions
+// ---------------------
+export const saveCachedTrucks = async (trucks) => {
+  try {
+    const database = ensureDbInitialized();
+    
+    // Clear existing cache first
+    await database.runAsync('DELETE FROM cached_trucks');
+    
+    for (const truck of trucks) {
+      await database.runAsync(
+        `INSERT OR REPLACE INTO cached_trucks 
+          (truck_plate, cached_at)
+         VALUES (?, ?)`,
+        [truck, getLocalTimestamp()]
+      );
+    }
+  } catch (error) {
+    console.error('Save cached trucks error:', error);
+    throw error;
+  }
+};
+
+export const getCachedTrucks = async () => {
+  try {
+    const database = ensureDbInitialized();
+    const trucks = await database.getAllAsync(
+      'SELECT truck_plate FROM cached_trucks ORDER BY truck_plate ASC'
+    );
+    return trucks.map(t => t.truck_plate);
+  } catch (error) {
+    console.error('Get cached trucks error:', error);
+    return [];
   }
 };
