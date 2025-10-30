@@ -75,7 +75,7 @@ const UserManagementScreen = ({ navigation }) => {
       last_name: user.last_name,
       username: user.username,
       password: '', // Leave password empty for security
-      position: user.position || 'Driver',
+      position: user.position || 'Logistics Driver',
     });
     setModalVisible(true);
   };
@@ -239,7 +239,7 @@ const UserManagementScreen = ({ navigation }) => {
               <View style={styles.modalOverlay}>
                 <View style={styles.pickerContent}>
                   <Text style={styles.modalTitle}>Select Position</Text>
-                  {['Driver', 'Service Vehicle Driver'].map((pos, idx) => (
+                  {['Logistics Driver', 'Service Vehicle Driver'].map((pos, idx) => (
                     <TouchableOpacity key={idx} style={styles.pickerItem} onPress={() => {setPosition(pos); setShowPositionPicker(false);}}>
                       <Text style={styles.pickerItemText}>{pos}</Text>
                     </TouchableOpacity>

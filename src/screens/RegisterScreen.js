@@ -9,7 +9,7 @@ const RegisterScreen = () => {
   const [lastName, setLastName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [position, setPosition] = useState('Driver');
+  const [position, setPosition] = useState('Logistics Driver');
   const [showPositionPicker, setShowPositionPicker] = useState(false);
   const navigation = useNavigation();
 
@@ -57,7 +57,7 @@ const RegisterScreen = () => {
           <View style={styles.modalOverlay}>
             <View style={styles.pickerContent}>
               <Text style={styles.modalTitle}>Select Position</Text>
-              {['Driver', 'Service Vehicle Driver'].map((pos, idx) => (
+              {['Logistics Driver', 'Service Vehicle Driver'].map((pos, idx) => (
                 <TouchableOpacity key={idx} style={styles.pickerItem} onPress={() => {setPosition(pos); setShowPositionPicker(false);}}>
                   <Text style={styles.pickerItemText}>{pos}</Text>
                 </TouchableOpacity>

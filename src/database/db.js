@@ -99,7 +99,7 @@ export const initDatabase = async () => {
         last_name TEXT NOT NULL,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        position TEXT DEFAULT 'Driver'
+        position TEXT DEFAULT 'Logistics Driver'
       );
     `);
 
@@ -153,7 +153,7 @@ export const seedTestUser = async () => {
     await database.runAsync(
       `INSERT OR IGNORE INTO users (first_name, middle_name, last_name, username, password, position)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      ['Erwin', 'Moya', 'Flores', 'test', 'test', 'Driver']
+      ['Erwin', 'Moya', 'Flores', 'test', 'test', 'Logistics Driver']
     );
     console.log('Test user seeded');
   } catch (error) {
@@ -538,7 +538,7 @@ export const registerUser = async (user) => {
         user.last_name,
         user.username,
         user.password, // TODO: Add hashing later
-        user.position || 'Driver',
+        user.position || 'Logistics Driver',
       ]
     );
     return result.lastInsertRowId;
@@ -580,7 +580,7 @@ export const updateUser = async (id, user) => {
       user.middle_name || null,
       user.last_name,
       user.username,
-      user.position || 'Driver',
+      user.position || 'Logistics Driver',
     ];
 
     // Only update password if provided
