@@ -502,29 +502,29 @@ const handleSaveDraft = async () => {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Refresh Button */}
-        <TouchableOpacity
-          style={[styles.refreshButton, isEditMode && styles.editModeButton]}
-          onPress={handleRefreshDeliveries}
-          disabled={syncing}
-        >
-          {syncing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.refreshButtonText}>🔄 Refresh Deliveries</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Delivery Dropdown */}
-        <Text style={styles.label}>Delivery</Text>
-        <TouchableOpacity
-          style={[styles.dropdownButton, isEditMode && styles.dropdownDisabled]}
-          onPress={() => !isEditMode && setShowDeliveryPicker(true)}
-          disabled={isEditMode}
-        >
-          <Text style={styles.dropdownText}>
-            {selectedDelivery ? selectedDelivery.dlf_code : 'Select delivery...'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.inputRow}>
+          {/* Delivery Dropdown */}
+          <TouchableOpacity
+            style={[styles.dropdownButton, isEditMode && styles.dropdownDisabled]}
+            onPress={() => !isEditMode && setShowDeliveryPicker(true)}
+            disabled={isEditMode}
+          >
+            <Text style={styles.dropdownText}>
+              {selectedDelivery ? selectedDelivery.dlf_code : 'Select DLF Code...'}
+            </Text>
+          </TouchableOpacity>
+                    <TouchableOpacity
+            style={[styles.refreshButton, isEditMode && styles.editModeButton]}
+            onPress={handleRefreshDeliveries}
+            disabled={syncing}
+          >
+            {syncing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.refreshButtonText}>🔄</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {selectedDelivery && (
           <>
@@ -623,7 +623,7 @@ const handleSaveDraft = async () => {
             {/* Plant Metrics */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Odometer Reaadings</Text>
-              <Text style={styles.label}>Odometer Departure (km)</Text>
+              <Text style={styles.label}>Odometer Departure</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., 125400"
@@ -631,7 +631,7 @@ const handleSaveDraft = async () => {
                 value={plantOdoDeparture}
                 onChangeText={setPlantOdoDeparture}
               />
-              <Text style={styles.label}>Odometer Arrival (km)</Text>
+              <Text style={styles.label}>Odometer Arrival</Text>
               <TextInput
                 style={styles.input}
                 placeholder="e.g., 125650"
@@ -784,11 +784,13 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   refreshButton: {
-    backgroundColor: '#1FCFFF',
+    backgroundColor: '#acecfdff',
     padding: 15,
+    borderWidth: 1,
+    borderColor: '#1FCFFF',
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   expenseCard: {
     flexDirection: 'row',
@@ -866,12 +868,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   dropdownButton: {
+    flex: 1,
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 15,
     backgroundColor: '#fff',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   dropdownText: {
     fontSize: 16,
@@ -924,6 +927,11 @@ const styles = StyleSheet.create({
   checkbox: {
     fontSize: 20,
     marginRight: 10,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
   },
   checklistText: {
     fontSize: 14,

@@ -403,7 +403,7 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
 
         {/* Draft Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
+          <Text style={styles.sectionTitle}>General Information</Text>
           
           {/* <Text style={styles.label}>Service Vehicle Driver <Text style={styles.required}>*</Text></Text>
           <TextInput
@@ -517,7 +517,7 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
 
         {/* Finalize Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Finalize Details</Text>
+          <Text style={styles.sectionTitle}>Truck Fuel Details</Text>
           
           {/* Departure Time */}
           <Text style={styles.label}>Departure Time <Text style={styles.required}>*</Text></Text>

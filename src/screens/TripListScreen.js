@@ -9,7 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import {getAllTripLogs, deleteTripLog} from '../database/db';
+import {getAllTripLogs, deleteTripLog, getExpensesByDeliveryId, deleteExpense} from '../database/db';
 import {checkAndSync} from '../services/syncService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -84,6 +84,12 @@ const TripListScreen = ({navigation}) => {
               
               for (const trip of tripsToDelete) {
                 await deleteTripLog(trip.id);
+              }
+
+              // DELETE EXPENSES TOO
+              const expenses = await getExpensesByDeliveryId(delivery.dlf_code);
+              for (const expense of expenses) {
+                await deleteExpense(expense.id);
               }
               
               Alert.alert('Success', 'Delivery deleted');
