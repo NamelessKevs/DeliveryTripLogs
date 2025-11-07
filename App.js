@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {NavigationContainer} from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {View, ActivityIndicator, StyleSheet} from 'react-native';
 import {initDatabase, seedTestUser} from './src/database/db';
@@ -13,6 +13,7 @@ import MonitoringScreen from './src/screens/MonitoringScreen';
 import TruckFuelFormScreen from './src/screens/TruckFuelFormScreen';
 import * as Location from 'expo-location';
 import { Alert } from 'react-native';
+import { StatusBar } from 'react-native';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,7 +24,7 @@ export default function App() {
     const initialize = async () => {
       try {
         await initDatabase();
-        await seedTestUser();
+        // await seedTestUser();
         
         // Request location permission
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -62,53 +63,56 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Login" // <- start with Login screen
-        screenOptions={{
-          headerStyle: { backgroundColor: '#1FCFFF' },
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontWeight: 'bold' },
-        }}
-      >
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Register"
-          component={RegisterScreen}
-          options={{ title: 'Register Account' }}
-        />
-        <Stack.Screen
-          name="TripList"
-          component={TripListScreen}
-          options={{ title: 'Betafoam Logistics' }}
-        />
-        <Stack.Screen 
-          name="DeliveryForm" 
-          component={DeliveryFormScreen}
-          options={({ route }) => ({ 
-            title: route.params?.deliveryToEdit ? 'Edit Delivery' : 'Log Delivery (New)' 
-          })} 
-        />
-        <Stack.Screen
-          name="Monitoring"
-          component={MonitoringScreen}
-          options={{ title: 'Truck Fuel Monitoring' }}
-        />
-        <Stack.Screen
-          name="TruckFuelForm"
-          component={TruckFuelFormScreen}
-          options={({ route }) => ({ 
-            title: route.params?.recordToEdit ? 'Edit Fuel Record' : 'Log Fuel (New)' 
-          })}
-        />
-        <Stack.Screen name="Accounts" component={UserManagementScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
+    <>
+    <StatusBar barStyle="dark-content" backgroundColor="#1FCFFF" />
+      <NavigationContainer theme={DefaultTheme}>
+        <Stack.Navigator
+          initialRouteName="Login" // <- start with Login screen
+          screenOptions={{
+            headerStyle: { backgroundColor: '#1FCFFF' },
+            headerTintColor: '#fff',
+            headerTitleStyle: { fontWeight: 'bold' },
+          }}
+        >
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Register"
+            component={RegisterScreen}
+            options={{ title: 'Register Account' }}
+          />
+          <Stack.Screen
+            name="TripList"
+            component={TripListScreen}
+            options={{ title: 'Betafoam Logistics' }}
+          />
+          <Stack.Screen 
+            name="DeliveryForm" 
+            component={DeliveryFormScreen}
+            options={({ route }) => ({ 
+              title: route.params?.deliveryToEdit ? 'Edit Delivery' : 'Log Delivery (New)' 
+            })} 
+          />
+          <Stack.Screen
+            name="Monitoring"
+            component={MonitoringScreen}
+            options={{ title: 'Truck Fuel Monitoring' }}
+          />
+          <Stack.Screen
+            name="TruckFuelForm"
+            component={TruckFuelFormScreen}
+            options={({ route }) => ({ 
+              title: route.params?.recordToEdit ? 'Edit Fuel Record' : 'Log Fuel (New)' 
+            })}
+          />
+          <Stack.Screen name="Accounts" component={UserManagementScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </>
+    );
 }
 
 const styles = StyleSheet.create({

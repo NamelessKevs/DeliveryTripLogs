@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { registerUser, getAllUsers, updateUser, deleteUser, getCurrentUser } from '../database/db';
+import { getAllUsers, updateUser, deleteUser, getCurrentUser, initDatabase } from '../database/db';
+import * as SQLite from 'expo-sqlite';
 
 const UserManagementScreen = ({ navigation }) => {
   const [users, setUsers] = useState([]);
@@ -217,6 +218,53 @@ const UserManagementScreen = ({ navigation }) => {
         />
       )}
 
+      {/* Reset Database Button - For Testing Only */}
+      <TouchableOpacity
+        style={styles.resetButton}
+        onPress={() => {
+          Alert.alert(
+            'Reset Database',
+            'This will delete ALL data and recreate tables. Continue?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Reset',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    // Manually drop and recreate all tables
+                    const db = await SQLite.openDatabaseAsync('DeliveryTripLogs.db');
+                    
+                    await db.execAsync(`
+                      DROP TABLE IF EXISTS cached_deliveries;
+                      DROP TABLE IF EXISTS cached_expense_types;
+                      DROP TABLE IF EXISTS delivery_expenses;
+                      DROP TABLE IF EXISTS trip_logs;
+                      DROP TABLE IF EXISTS users;
+                      DROP TABLE IF EXISTS truck_fuel_monitoring;
+                      DROP TABLE IF EXISTS cached_trucks;
+                    `);
+                    
+                    // Recreate tables
+                    await initDatabase();
+                    
+                    Alert.alert(
+                      'Success', 
+                      'Database reset complete. Please restart the app.',
+                      [{ text: 'OK' }]
+                    );
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to reset database: ' + error.message);
+                  }
+                }
+              }
+            ]
+          );
+        }}
+      >
+        <Text style={styles.resetButtonText}>🔧 Reset All Database</Text>
+      </TouchableOpacity>
+
       <Modal
         animationType="slide"
         transparent={true}
@@ -305,6 +353,21 @@ const UserManagementScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  resetButton: {
+    backgroundColor: '#ff6b6b',
+    padding: 12,
+    margin: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+    bottom: 40,
+    borderColor: '#ff0000',
+  },
+  resetButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 5 },
   dropdownButton: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, backgroundColor: '#fff', marginBottom: 15 },
   dropdownText: {fontSize: 16, color: '#333' },

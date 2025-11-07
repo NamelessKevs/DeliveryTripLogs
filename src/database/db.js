@@ -20,18 +20,18 @@ export const initDatabase = async () => {
   try {
     db = await SQLite.openDatabaseAsync('DeliveryTripLogs.db');
 
-    console.log('🚀 Refreshing database tables...');
+    console.log('🚀 Starting Application...');
 
     // Drop all existing tables (force recreate)
-    await db.execAsync(`
-      DROP TABLE IF EXISTS cached_deliveries;
-      DROP TABLE IF EXISTS trip_logs;
-      DROP TABLE IF EXISTS users;
-      DROP TABLE IF EXISTS truck_fuel_monitoring;
-      DROP TABLE IF EXISTS cached_trucks;
-      DROP TABLE IF EXISTS cached_expense_types;
-      DROP TABLE IF EXISTS delivery_expenses;
-    `);
+    // await db.execAsync(`
+    //   DROP TABLE IF EXISTS cached_deliveries;
+    //   DROP TABLE IF EXISTS trip_logs;
+    //   DROP TABLE IF EXISTS users;
+    //   DROP TABLE IF EXISTS truck_fuel_monitoring;
+    //   DROP TABLE IF EXISTS cached_trucks;
+    //   DROP TABLE IF EXISTS cached_expense_types;
+    //   DROP TABLE IF EXISTS delivery_expenses;
+    // `);
 
     // Recreate tables fresh
     await db.execAsync(`
@@ -141,7 +141,7 @@ export const initDatabase = async () => {
       );
     `);
 
-    console.log('✅ Database fully reset and recreated!');
+    console.log('✅Application Ready To Use');
     return db;
   } catch (error) {
     console.error('❌ Database init error:', error);
