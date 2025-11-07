@@ -487,7 +487,9 @@ const handleSaveDraft = async () => {
   };
 
   const getLoggedCustomers = () => {
-    return dropLogs.map(log => log.customer);
+    return dropLogs
+      .filter(log => log.drop_number > 0) // Exclude drop 0
+      .map(log => `${log.customer}|${log.delivery_address}`);
   };
 
   if (loading) {
@@ -644,14 +646,25 @@ const handleSaveDraft = async () => {
             {/* Customer Checklist */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
-                No of CUSTOMERS: ({selectedDelivery.customers.length})
+                No of Drop(s): ({selectedDelivery.customers.length})
               </Text>
               {selectedDelivery.customers.map((customer, idx) => {
-                const isLogged = getLoggedCustomers().includes(customer.customer_name);
+                const uniqueKey = `${customer.customer_name}|${customer.delivery_address}`;
+                const isLogged = getLoggedCustomers().includes(uniqueKey);
+                
                 return (
                   <View key={idx} style={styles.checklistItem}>
-                    <Text style={styles.checkbox}>{isLogged ? '☑' : '☐'}</Text>
-                    <Text style={styles.checklistText}>{customer.customer_name}</Text>
+                    <View style={{flex: 1}}>
+                      <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                        <Text style={styles.checkbox}>{isLogged ? '☑' : '☐'}</Text>
+                        <Text style={styles.checklistText}>{customer.customer_name}</Text>
+                      </View>
+                      {customer.delivery_address && (
+                        <Text style={styles.deliveryAddressText}>
+                          📍 {customer.delivery_address}
+                        </Text>
+                      )}
+                    </View>
                   </View>
                 );
               })}
@@ -807,6 +820,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
     marginBottom: 4,
+  },
+  deliveryAddressText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 30, // Align with customer name
+    marginTop: 2,
   },
   expenseAmount: {
     fontSize: 16,

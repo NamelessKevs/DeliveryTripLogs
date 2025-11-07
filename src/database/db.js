@@ -29,6 +29,8 @@ export const initDatabase = async () => {
       DROP TABLE IF EXISTS users;
       DROP TABLE IF EXISTS truck_fuel_monitoring;
       DROP TABLE IF EXISTS cached_trucks;
+      DROP TABLE IF EXISTS cached_expense_types;
+      DROP TABLE IF EXISTS delivery_expenses;
     `);
 
     // Recreate tables fresh
@@ -80,6 +82,7 @@ export const initDatabase = async () => {
         si_no TEXT,
         drop_number INTEGER NOT NULL,
         customer TEXT,
+        delivery_address TEXT,
         address TEXT,
         customer_arrival TEXT,
         customer_departure TEXT,
@@ -184,9 +187,9 @@ export const addTripLog = async (tripLog) => {
     const result = await database.runAsync(
       `INSERT INTO trip_logs 
         (dlf_code, driver, helper, plate_no, trip_count, 
-         company_departure, company_arrival, dr_no, plant_odo_departure, plant_odo_arrival, si_no, drop_number, customer, address, 
+         company_departure, company_arrival, dr_no, plant_odo_departure, plant_odo_arrival, si_no, drop_number, customer, delivery_address, address, 
          customer_arrival, customer_departure, remarks, created_by, created_at, synced, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tripLog.dlf_code,
         tripLog.driver,
@@ -201,6 +204,7 @@ export const addTripLog = async (tripLog) => {
         tripLog.si_no || null,
         tripLog.drop_number,
         tripLog.customer || null,
+        tripLog.delivery_address || null,
         tripLog.address || null,
         tripLog.customer_arrival || null,
         tripLog.customer_departure || null,
@@ -226,7 +230,7 @@ export const updateTripLog = async (id, tripLog) => {
       `UPDATE trip_logs 
        SET dlf_code = ?, driver = ?, helper = ?, plate_no = ?, trip_count = ?, company_departure = ?, company_arrival = ?,
            dr_no = ?, plant_odo_departure = ?, plant_odo_arrival = ?, si_no = ?, drop_number = ?,
-           customer = ?, address = ?, customer_arrival = ?, customer_departure = ?, remarks = ?, synced = ?, sync_status = ?
+           customer = ?, delivery_address = ?, address = ?, customer_arrival = ?, customer_departure = ?, remarks = ?, synced = ?, sync_status = ?
        WHERE id = ?`,
       [
         tripLog.dlf_code,
@@ -242,6 +246,7 @@ export const updateTripLog = async (id, tripLog) => {
         tripLog.si_no || null,
         tripLog.drop_number,
         tripLog.customer || null,
+        tripLog.delivery_address || null,
         tripLog.address || null,
         tripLog.customer_arrival || null,
         tripLog.customer_departure || null,

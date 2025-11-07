@@ -28,7 +28,8 @@ const CustomerDropModal = ({
   useEffect(() => {
     if (editingDrop) {
       // Load existing drop data for editing
-      setSelectedCustomer(editingDrop.customer || '');
+      const uniqueKey = `${editingDrop.customer}|${editingDrop.delivery_address}`;
+      setSelectedCustomer(uniqueKey);
       setAddress(editingDrop.address || '');
       setArrivalTime(editingDrop.customer_arrival || null);
       setDepartureTime(editingDrop.customer_departure || null);
@@ -71,19 +72,25 @@ const CustomerDropModal = ({
     }
   };
 
-  const handleSelectCustomer = (customerName) => {
-    if (editingDrop && customerName !== editingDrop.customer) {
-      // When editing, customer is locked - show alert
-      Alert.alert('Note', 'Customer cannot be changed when editing a drop');
-      return;
+  const handleSelectCustomer = (customerName, deliveryAddress) => {
+    const uniqueKey = `${customerName}|${deliveryAddress}`;
+    
+    // Check if editing and trying to change customer
+    if (editingDrop) {
+      const editingKey = `${editingDrop.customer}|${editingDrop.delivery_address}`;
+      if (uniqueKey !== editingKey) {
+        Alert.alert('Note', 'Customer cannot be changed when editing a drop');
+        return;
+      }
     }
     
-    // Check if customer already logged (and not the one we're editing)
-    if (isCustomerLogged(customerName) && (!editingDrop || customerName !== editingDrop.customer)) {
-      return; // Silently ignore (already disabled in UI)
+    // Check if this specific customer+address combo is already logged
+    const isLogged = loggedCustomers.includes(uniqueKey);
+    if (isLogged && !editingDrop) {
+      return; // Silently ignore
     }
     
-    setSelectedCustomer(customerName);
+    setSelectedCustomer(uniqueKey);
   };
 
   const handleCaptureArrival = async () => {
@@ -95,14 +102,21 @@ const CustomerDropModal = ({
       const { status } = await Location.getForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Location Required', 'Please enable location access');
+        setAddress('Location permission denied');
         return;
       }
       
-      const location = await Location.getCurrentPositionAsync({});
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced, // Balance speed vs accuracy
+        timeout: 15000, // Wait up to 15 seconds
+        maximumAge: 10000, // Accept cached location if < 10 seconds old
+      });
+      
       const coords = `${location.coords.latitude}, ${location.coords.longitude}`;
-      setAddress(coords); // Store coordinates in address state
+      setAddress(coords);
     } catch (error) {
       console.error('GPS error:', error);
+      Alert.alert('GPS Failed', 'Could not get location. Address set to: GPS unavailable');
       setAddress('GPS unavailable');
     }
   };
@@ -139,9 +153,13 @@ const CustomerDropModal = ({
       return;
     }
 
+    // Extract customer name and delivery address from uniqueKey
+    const [customerName, deliveryAddress] = selectedCustomer.split('|');
+
     // Prepare drop data
     const dropData = {
-      customer: selectedCustomer,
+      customer: customerName,
+      delivery_address: deliveryAddress,
       address: address.trim(),
       customer_arrival: arrivalTime,
       customer_departure: departureTime,
@@ -162,6 +180,7 @@ const CustomerDropModal = ({
       dropData.plant_odo_arrival = editingDrop.plant_odo_arrival;
       dropData.plant_kms_run = editingDrop.plant_kms_run;
       dropData.drop_number = editingDrop.drop_number;
+      dropData.delivery_address = editingDrop.delivery_address; // Preserve original
       dropData.created_by = editingDrop.created_by;
       dropData.created_at = editingDrop.created_at;
       dropData.synced = editingDrop.synced;
@@ -187,29 +206,37 @@ const CustomerDropModal = ({
 
             {/* Customer Selection */}
             <Text style={styles.label}>Choose Customer</Text>
-            {delivery?.customers.map((customer, idx) => {
-              const isLogged = isCustomerLogged(customer.customer_name);
-              const isSelected = selectedCustomer === customer.customer_name;
-              const isDisabled = isLogged && !editingDrop; // Disable if already logged (unless editing that exact drop)
-              
-              return (
-                <TouchableOpacity
-                  key={idx}
-                  style={[
-                    styles.radioOption,
-                    isSelected && styles.radioOptionSelected,
-                    isDisabled && styles.radioOptionDisabled,
-                  ]}
-                  onPress={() => handleSelectCustomer(customer.customer_name)}
-                  disabled={isDisabled}
-                >
+              {delivery?.customers.map((customer, idx) => {
+                const uniqueKey = `${customer.customer_name}|${customer.delivery_address}`;
+                const isLogged = loggedCustomers.includes(uniqueKey);
+                const isSelected = selectedCustomer === uniqueKey;
+                const isDisabled = isLogged && !editingDrop;
+                
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[
+                      styles.radioOption,
+                      isSelected && styles.radioOptionSelected,
+                      isDisabled && styles.radioOptionDisabled,
+                    ]}
+                    onPress={() => handleSelectCustomer(customer.customer_name, customer.delivery_address)}
+                    disabled={isDisabled}
+                  >
                   <View style={styles.radioButton}>
                     {isSelected && <View style={styles.radioButtonInner} />}
                   </View>
-                  <Text style={styles.radioText}>
-                    {customer.customer_name}
-                    {isLogged && <Text style={styles.loggedBadge}> ✓ Logged</Text>}
-                  </Text>
+                  <View style={{flex: 1}}>
+                    <Text style={styles.radioText}>
+                      {customer.customer_name}
+                      {isLogged && <Text style={styles.loggedBadge}> ✓ Logged</Text>}
+                    </Text>
+                    {customer.delivery_address && (
+                      <Text style={styles.deliveryAddressSubtext}>
+                        📍 {customer.delivery_address}
+                      </Text>
+                    )}
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -300,6 +327,11 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 15,
     marginBottom: 8,
+  },
+  deliveryAddressSubtext: {
+    fontSize: 12,
+    color: '#888888ff',
+    marginTop: 4,
   },
   required: {
     color: 'red',
