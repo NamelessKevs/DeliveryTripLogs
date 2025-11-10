@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {View, ActivityIndicator, StyleSheet} from 'react-native';
-import {initDatabase, seedTestUser} from './src/database/db';
+import {initDatabase, seedTestUser, getCurrentUser} from './src/database/db';
 import {startAutoSync} from './src/services/syncService';
 import TripListScreen from './src/screens/TripListScreen';
 import LoginScreen from './src/screens/LoginScreen';
@@ -19,6 +19,7 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
+  const [initialRoute, setInitialRoute] = useState('Login');
 
   useEffect(() => {
     const initialize = async () => {
@@ -33,6 +34,16 @@ export default function App() {
             'Permission Required', 
             'Location access is needed to log delivery locations accurately.'
           );
+        }
+
+        // Check if user is already logged in
+        const currentUser = await getCurrentUser();
+        if (currentUser) {
+          if (currentUser.position === 'Service Vehicle Driver') {
+            setInitialRoute('Monitoring');
+          } else {
+            setInitialRoute('TripList');
+          }
         }
         
         console.log('App initialized');
@@ -67,7 +78,7 @@ export default function App() {
     <StatusBar barStyle="dark-content" backgroundColor="#1FCFFF" />
       <NavigationContainer theme={DefaultTheme}>
         <Stack.Navigator
-          initialRouteName="Login" // <- start with Login screen
+          initialRouteName={initialRoute} // <- start with Login screen
           screenOptions={{
             headerStyle: { backgroundColor: '#1FCFFF' },
             headerTintColor: '#fff',
