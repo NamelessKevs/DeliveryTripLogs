@@ -23,15 +23,15 @@ export const initDatabase = async () => {
     console.log('🚀 Starting Application...');
 
     // Drop all existing tables (force recreate)
-    // await db.execAsync(`
-    //   DROP TABLE IF EXISTS cached_deliveries;
-    //   DROP TABLE IF EXISTS trip_logs;
-    //   DROP TABLE IF EXISTS users;
-    //   DROP TABLE IF EXISTS truck_fuel_monitoring;
-    //   DROP TABLE IF EXISTS cached_trucks;
-    //   DROP TABLE IF EXISTS cached_expense_types;
-    //   DROP TABLE IF EXISTS delivery_expenses;
-    // `);
+    await db.execAsync(`
+      DROP TABLE IF EXISTS cached_deliveries;
+      DROP TABLE IF EXISTS trip_logs;
+      DROP TABLE IF EXISTS users;
+      DROP TABLE IF EXISTS truck_fuel_monitoring;
+      DROP TABLE IF EXISTS cached_trucks;
+      DROP TABLE IF EXISTS cached_expense_types;
+      DROP TABLE IF EXISTS delivery_expenses;
+    `);
 
     // Recreate tables fresh
     await db.execAsync(`
@@ -83,10 +83,12 @@ export const initDatabase = async () => {
         drop_number INTEGER NOT NULL,
         customer TEXT,
         delivery_address TEXT,
+        dds_id TEXT,
         address TEXT,
         customer_arrival TEXT,
         customer_departure TEXT,
         remarks TEXT,
+        form_type TEXT DEFAULT 'delivery',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         created_by TEXT NOT NULL,
         synced INTEGER DEFAULT 0,
@@ -187,9 +189,9 @@ export const addTripLog = async (tripLog) => {
     const result = await database.runAsync(
       `INSERT INTO trip_logs 
         (dlf_code, driver, helper, plate_no, trip_count, 
-         company_departure, company_arrival, dr_no, plant_odo_departure, plant_odo_arrival, si_no, drop_number, customer, delivery_address, address, 
-         customer_arrival, customer_departure, remarks, created_by, created_at, synced, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         company_departure, company_arrival, dr_no, plant_odo_departure, plant_odo_arrival, si_no, drop_number, customer, delivery_address, dds_id, address, 
+         customer_arrival, customer_departure, remarks, form_type, created_by, created_at, synced, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tripLog.dlf_code,
         tripLog.driver,
@@ -205,10 +207,12 @@ export const addTripLog = async (tripLog) => {
         tripLog.drop_number,
         tripLog.customer || null,
         tripLog.delivery_address || null,
+        tripLog.dds_id || null,
         tripLog.address || null,
         tripLog.customer_arrival || null,
         tripLog.customer_departure || null,
         tripLog.remarks || null,
+        tripLog.form_type || 'delivery',
         tripLog.created_by,
         tripLog.created_at || getLocalTimestamp(),
         tripLog.synced || 0,
@@ -230,7 +234,7 @@ export const updateTripLog = async (id, tripLog) => {
       `UPDATE trip_logs 
        SET dlf_code = ?, driver = ?, helper = ?, plate_no = ?, trip_count = ?, company_departure = ?, company_arrival = ?,
            dr_no = ?, plant_odo_departure = ?, plant_odo_arrival = ?, si_no = ?, drop_number = ?,
-           customer = ?, delivery_address = ?, address = ?, customer_arrival = ?, customer_departure = ?, remarks = ?, synced = ?, sync_status = ?
+           customer = ?, delivery_address = ?, dds_id = ?, address = ?, customer_arrival = ?, customer_departure = ?, remarks = ?, form_type = ?, synced = ?, sync_status = ?
        WHERE id = ?`,
       [
         tripLog.dlf_code,
@@ -247,10 +251,12 @@ export const updateTripLog = async (id, tripLog) => {
         tripLog.drop_number,
         tripLog.customer || null,
         tripLog.delivery_address || null,
+        tripLog.dds_id || null,
         tripLog.address || null,
         tripLog.customer_arrival || null,
         tripLog.customer_departure || null,
         tripLog.remarks || null,
+        tripLog.form_type || 'delivery',
         tripLog.synced,
         tripLog.sync_status || 'no',
         id,

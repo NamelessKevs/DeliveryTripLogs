@@ -57,6 +57,9 @@ export const checkAndSync = async () => {
           created_at: log.created_at,
           created_by: log.created_by,
           expense_details: JSON.stringify(expenses), // ← Add expenses as JSON
+          dds_id: log.dds_id || '',
+          form_type: log.form_type || 'delivery',
+          delivery_address: log.delivery_address,
         };
       })
     );

@@ -24,6 +24,8 @@ const CustomerDropModal = ({
   const [arrivalTime, setArrivalTime] = useState(null);
   const [departureTime, setDepartureTime] = useState(null);
   const [remarks, setRemarks] = useState('');
+  const [drNo, setDrNo] = useState('');
+  const [siNo, setSiNo] = useState('');
 
   useEffect(() => {
     if (editingDrop) {
@@ -34,6 +36,8 @@ const CustomerDropModal = ({
       setArrivalTime(editingDrop.customer_arrival || null);
       setDepartureTime(editingDrop.customer_departure || null);
       setRemarks(editingDrop.remarks || '');
+      setDrNo(editingDrop.dr_no || '');
+      setSiNo(editingDrop.si_no || '');
     } else {
       // Reset for new drop
       resetForm();
@@ -46,6 +50,8 @@ const CustomerDropModal = ({
     setArrivalTime(null);
     setDepartureTime(null);
     setRemarks('');
+    setDrNo('');
+    setSiNo('');
   };
 
   const formatDateTime = (date) => {
@@ -159,7 +165,11 @@ const CustomerDropModal = ({
     // Prepare drop data
     const dropData = {
       customer: customerName,
+      dr_no: drNo.trim(),
+      si_no: siNo.trim(),
       delivery_address: deliveryAddress,
+      dds_id: delivery?.customers.find(c => `${c.customer_name}|${c.delivery_address}` === selectedCustomer)?.dds_id || null,
+      form_type: 'delivery',
       address: address.trim(),
       customer_arrival: arrivalTime,
       customer_departure: departureTime,
@@ -180,7 +190,11 @@ const CustomerDropModal = ({
       dropData.plant_odo_arrival = editingDrop.plant_odo_arrival;
       dropData.plant_kms_run = editingDrop.plant_kms_run;
       dropData.drop_number = editingDrop.drop_number;
-      dropData.delivery_address = editingDrop.delivery_address; // Preserve original
+      dropData.delivery_address = editingDrop.delivery_address;
+      dropData.dr_no = editingDrop.dr_no;
+      dropData.si_no = editingDrop.si_no;
+      dropData.dds_id = editingDrop.dds_id;
+      dropData.form_type = editingDrop.form_type;
       dropData.created_by = editingDrop.created_by;
       dropData.created_at = editingDrop.created_at;
       dropData.synced = editingDrop.synced;
@@ -251,6 +265,26 @@ const CustomerDropModal = ({
               multiline
             /> */}
 
+            {/* DR No */}
+            <Text style={styles.label}>DR No</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter DR number"
+              autoCapitalize="characters"
+              value={drNo}
+              onChangeText={setDrNo}
+            />
+
+            {/* SI No */}
+            <Text style={styles.label}>SI No</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter SI number"
+              autoCapitalize="characters"
+              value={siNo}
+              onChangeText={setSiNo}
+            />
+
             {/* Arrival Time */}
             <Text style={styles.label}>Arrival Time <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity
@@ -302,7 +336,7 @@ const CustomerDropModal = ({
   );
 };
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

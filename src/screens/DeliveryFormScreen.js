@@ -32,6 +32,7 @@ import {
 import { fetchDeliveriesFromAPI } from '../api/deliveryApi';
 import CustomerDropModal from '../components/CustomerDropModal';
 import ExpenseModal from '../components/ExpenseModal';
+import PickUpFormModal from '../components/PickUpFormModal';
 
 const DeliveryFormScreen = ({ navigation, route }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -54,12 +55,12 @@ const DeliveryFormScreen = ({ navigation, route }) => {
   
   // Customer drop modal
   const [showDropModal, setShowDropModal] = useState(false);
+  const [showPickUpModal, setShowPickUpModal] = useState(false);
+  const [editingPickUp, setEditingPickUp] = useState(null);
   const [editingDrop, setEditingDrop] = useState(null);
 
-  const [drNo, setDrNo] = useState('');
   const [plantOdoDeparture, setPlantOdoDeparture] = useState('');
   const [plantOdoArrival, setPlantOdoArrival] = useState('');
-  const [siNo, setSiNo] = useState('');
 
   // Expenses
   const [expenses, setExpenses] = useState([]);
@@ -93,10 +94,8 @@ const DeliveryFormScreen = ({ navigation, route }) => {
       
       setCompanyDeparture(draft.company_departure);
       setCompanyArrival(draft.company_arrival);
-      setDrNo(draft.dr_no || '');
       setPlantOdoDeparture(draft.plant_odo_departure || '');
       setPlantOdoArrival(draft.plant_odo_arrival || '');
-      setSiNo(draft.si_no || '');
     }
   }, [route.params]);
 
@@ -229,16 +228,24 @@ const DeliveryFormScreen = ({ navigation, route }) => {
   };
 
   const handleEditDrop = (drop) => {
-    setEditingDrop(drop);
-    setShowDropModal(true);
+    if (drop.form_type === 'pick-up') {
+      setEditingPickUp(drop);
+      setShowPickUpModal(true);
+    } else {
+      setEditingDrop(drop);
+      setShowDropModal(true);
+    }
   };
 
   const handleSaveFromModal = async (dropData) => {
     try {
-      if (editingDrop) {
-        // Update existing drop
-        await updateTripLog(editingDrop.id, dropData);
-        Alert.alert('Success', 'Drop updated');
+      const isEditing = editingDrop || editingPickUp;
+
+      if (isEditing) {  // ✅ Check BOTH editingDrop OR editingPickUp
+        // Update existing drop/pick-up
+        const logToUpdate = editingDrop || editingPickUp;
+        await updateTripLog(logToUpdate.id, dropData);
+        Alert.alert('Success', 'Form updated');
       } else {
         // Add new drop
         const nextDrop = await getNextDropNumber(selectedDelivery.dlf_code);
@@ -251,14 +258,12 @@ const DeliveryFormScreen = ({ navigation, route }) => {
           trip_count: selectedDelivery.trip_count,
           company_departure: companyDeparture,
           company_arrival: companyArrival,
-          dr_no: drNo || null,
           plant_odo_departure: plantOdoDeparture || null,
           plant_odo_arrival: plantOdoArrival || null,
-          si_no: siNo || null,
           drop_number: nextDrop,
           created_by: getFormattedUserName(),
           created_at: getLocalTimestamp(),
-          synced: -1, // Draft by default
+          synced: -1,
           sync_status: 'no',
         });
         Alert.alert('Success', 'Drop logged');
@@ -268,18 +273,21 @@ const DeliveryFormScreen = ({ navigation, route }) => {
       const logs = await getTripLogsByDeliveryId(selectedDelivery.dlf_code);
       setDropLogs(logs);
       setShowDropModal(false);
+      setShowPickUpModal(false);
+      setEditingDrop(null);
+      setEditingPickUp(null);
     } catch (error) {
       Alert.alert('Error', error.message);
     }
   };
 
   const handleAddExpense = () => {
-  if (!selectedDelivery) {
-    Alert.alert('Error', 'Please select a delivery first');
-    return;
-  }
-  setShowExpenseModal(true);
-};
+    if (!selectedDelivery) {
+      Alert.alert('Error', 'Please select a delivery first');
+      return;
+    }
+    setShowExpenseModal(true);
+  };
 
 const handleSaveExpense = async (expenseType, amount) => {
   try {
@@ -350,10 +358,8 @@ const handleSaveDraft = async () => {
         ...existingDrop0,
         company_departure: companyDeparture,
         company_arrival: companyArrival,
-        dr_no: drNo || existingDrop0.dr_no || null,
         plant_odo_departure: plantOdoDeparture || existingDrop0.plant_odo_departure || null,
         plant_odo_arrival: plantOdoArrival || existingDrop0.plant_odo_arrival || null,
-        si_no: siNo || existingDrop0.si_no || null,
       });
     } else {
       // Create new drop 0
@@ -365,16 +371,16 @@ const handleSaveDraft = async () => {
         trip_count: selectedDelivery.trip_count,
         company_departure: companyDeparture,
         company_arrival: companyArrival,
-        dr_no: drNo || null,
         plant_odo_departure: plantOdoDeparture || null,
         plant_odo_arrival: plantOdoArrival || null,
-        si_no: siNo || null,
         drop_number: 0,
         customer: null,
+        dds_id: null,
         address: null,
         customer_arrival: null,
         customer_departure: null,
         remarks: 'Draft - No drops logged yet',
+        form_type: 'delivery',
         created_by: getFormattedUserName(),
         created_at: getLocalTimestamp(),
         synced: -1,
@@ -436,10 +442,8 @@ const handleSaveDraft = async () => {
           ...log,
           company_departure: companyDeparture,
           company_arrival: companyArrival,
-          dr_no: drNo || log.dr_no || null,
           plant_odo_departure: plantOdoDeparture || log.plant_odo_departure || null,
           plant_odo_arrival: plantOdoArrival || log.plant_odo_arrival || null,
-          si_no: siNo || log.si_no || null,
           synced: 0,
           sync_status: 'no'
         });
@@ -546,26 +550,6 @@ const handleSaveDraft = async () => {
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Trip:</Text>
               <Text style={styles.infoValue}>{selectedDelivery.trip_count}</Text>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.label}>DR Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., DR-0001"
-                autoCapitalize="characters"
-                value={drNo}
-                onChangeText={setDrNo}
-              />
-
-              <Text style={styles.label}>SI Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., SI-0001"
-                autoCapitalize="characters"
-                value={siNo}
-                onChangeText={setSiNo}
-              />
             </View>
 
             {/* Company Times */}
@@ -699,6 +683,13 @@ const handleSaveDraft = async () => {
               <Text style={styles.addDropButtonText}>+ Log Customer Drop</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={[styles.addDropButton, {backgroundColor: '#FF9500'}]}
+              onPress={() => setShowPickUpModal(true)}
+            >
+              <Text style={styles.addDropButtonText}>+ Log Pick-Up</Text>
+            </TouchableOpacity>
+
             {/* Draft / Finalize Buttons */}
             <View style={styles.buttonRow}>
               <TouchableOpacity style={styles.draftButton} onPress={handleSaveDraft}>
@@ -760,6 +751,18 @@ const handleSaveDraft = async () => {
         loggedCustomers={getLoggedCustomers()}
         onSave={handleSaveFromModal}
         onCancel={() => setShowDropModal(false)}
+        />
+      )}
+      {/* Pick-up Modal */}
+      {showPickUpModal && (
+        <PickUpFormModal
+          visible={showPickUpModal}
+          editingPickUp={editingPickUp}
+          onSave={handleSaveFromModal}
+          onCancel={() => {
+            setShowPickUpModal(false);
+            setEditingPickUp(null);
+          }}
         />
       )}
       {/* Expense Modal */}

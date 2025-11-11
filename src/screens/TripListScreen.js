@@ -145,10 +145,8 @@ const groupTripsByDelivery = (trips) => {
         trip_count: trip.trip_count,
         company_departure: trip.company_departure,
         company_arrival: trip.company_arrival,
-        dr_no: trip.dr_no,
         plant_odo_departure: trip.plant_odo_departure,
         plant_odo_arrival: trip.plant_odo_arrival,
-        si_no: trip.si_no,
         created_by: trip.created_by,
         created_at: trip.created_at,
         drops: [],
@@ -219,8 +217,6 @@ const groupTripsByDelivery = (trips) => {
           <Text style={styles.truckPlate}>🤝 {item.helper}</Text>
         )}
         <Text style={styles.truckPlate}>🚚 {item.plate_no} | Trip {item.trip_count}</Text>
-        <Text style={styles.truckPlate}>DR No#: {item.dr_no}</Text>
-        <Text style={styles.truckPlate}>SI No#: {item.si_no}</Text>
         <Text style={styles.truckPlate}>ODO Depart: {item.plant_odo_departure} | ODO Arrive: {item.plant_odo_arrival}</Text>
         
         <View style={styles.timeContainer}>
@@ -244,6 +240,9 @@ const groupTripsByDelivery = (trips) => {
               <View key={drop.id} style={{marginTop: 8}}>
                 <Text style={styles.locationText}>
                   {drop.drop_number}. {drop.customer}
+                  {drop.form_type === 'pick-up' && (
+                    <Text style={styles.pickUpBadge}> 📦 Pick-Up</Text>
+                  )}
                 </Text>
                 <Text style={styles.timeText}>
                     {formatDateTime(drop.customer_arrival)} - {formatDateTime(drop.customer_departure)}
@@ -372,6 +371,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 5,
+  },
+  pickUpBadge: {
+    color: '#FF9500',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   syncButton: {
     backgroundColor: '#1FCFFF',
