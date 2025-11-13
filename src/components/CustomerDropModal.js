@@ -23,6 +23,7 @@ const CustomerDropModal = ({
   const [address, setAddress] = useState('');
   const [arrivalTime, setArrivalTime] = useState(null);
   const [departureTime, setDepartureTime] = useState(null);
+  const [quantity, setQuantity] = useState('');
   const [remarks, setRemarks] = useState('');
   const [drNo, setDrNo] = useState('');
   const [siNo, setSiNo] = useState('');
@@ -35,6 +36,7 @@ const CustomerDropModal = ({
       setAddress(editingDrop.address || '');
       setArrivalTime(editingDrop.customer_arrival || null);
       setDepartureTime(editingDrop.customer_departure || null);
+      setQuantity(editingDrop.quantity || '');
       setRemarks(editingDrop.remarks || '');
       setDrNo(editingDrop.dr_no || '');
       setSiNo(editingDrop.si_no || '');
@@ -49,6 +51,7 @@ const CustomerDropModal = ({
     setAddress('');
     setArrivalTime(null);
     setDepartureTime(null);
+    setQuantity('');
     setRemarks('');
     setDrNo('');
     setSiNo('');
@@ -173,6 +176,7 @@ const CustomerDropModal = ({
       address: address.trim(),
       customer_arrival: arrivalTime,
       customer_departure: departureTime,
+      quantity: quantity.trim(),
       remarks: remarks.trim(),
     };
 
@@ -306,6 +310,16 @@ const CustomerDropModal = ({
                 {departureTime ? formatTimeDisplay(departureTime) : '[Capture Now]'}
               </Text>
             </TouchableOpacity>
+
+            {/* Quantity */}
+            <Text style={styles.label}>Quantity</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., 125400"
+              keyboardType="number-pad"
+              value={quantity}
+              onChangeText={setQuantity}
+            />
 
             {/* Remarks */}
             <Text style={styles.label}>Remarks</Text>

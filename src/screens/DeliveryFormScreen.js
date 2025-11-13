@@ -379,6 +379,7 @@ const handleSaveDraft = async () => {
         address: null,
         customer_arrival: null,
         customer_departure: null,
+        quantity: null,
         remarks: 'Draft - No drops logged yet',
         form_type: 'delivery',
         created_by: getFormattedUserName(),

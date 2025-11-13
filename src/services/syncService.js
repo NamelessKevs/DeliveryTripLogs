@@ -60,6 +60,7 @@ export const checkAndSync = async () => {
           dds_id: log.dds_id || '',
           form_type: log.form_type || 'delivery',
           delivery_address: log.delivery_address,
+          quantity: log.quantity,
         };
       })
     );

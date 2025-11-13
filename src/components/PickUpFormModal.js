@@ -17,6 +17,7 @@ const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
   const [address, setAddress] = useState('');
   const [arrivalTime, setArrivalTime] = useState(null);
   const [departureTime, setDepartureTime] = useState(null);
+  const [quantity, setQuantity] = useState('');
   const [remarks, setRemarks] = useState('');
 
   useEffect(() => {
@@ -26,6 +27,7 @@ const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
       setAddress(editingPickUp.address || '');
       setArrivalTime(editingPickUp.customer_arrival || null);
       setDepartureTime(editingPickUp.customer_departure || null);
+      setQuantity(editingPickUp.quantity || '');
       setRemarks(editingPickUp.remarks || '');
     } else if (!visible) {
       resetForm();
@@ -38,6 +40,7 @@ const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
     setAddress('');
     setArrivalTime(null);
     setDepartureTime(null);
+    setQuantity('');
     setRemarks('');
   };
 
@@ -119,6 +122,7 @@ const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
       address: address.trim(),
       customer_arrival: arrivalTime,
       customer_departure: departureTime,
+      quantity: quantity.trim(),
       remarks: remarks.trim(),
       dr_no: null,
       si_no: null,
@@ -195,6 +199,16 @@ const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
                 {departureTime ? formatTimeDisplay(departureTime) : '[Capture Now]'}
               </Text>
             </TouchableOpacity>
+
+            {/* Quantity */}
+            <Text style={styles.label}>Quantity</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g., 125400"
+              keyboardType="number-pad"
+              value={quantity}
+              onChangeText={setQuantity}
+            />
 
             {/* Remarks */}
             <Text style={styles.label}>Remarks</Text>

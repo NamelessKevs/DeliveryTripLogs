@@ -87,6 +87,7 @@ export const initDatabase = async () => {
         address TEXT,
         customer_arrival TEXT,
         customer_departure TEXT,
+        quantity TEXT,
         remarks TEXT,
         form_type TEXT DEFAULT 'delivery',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -190,8 +191,8 @@ export const addTripLog = async (tripLog) => {
       `INSERT INTO trip_logs 
         (dlf_code, driver, helper, plate_no, trip_count, 
          company_departure, company_arrival, dr_no, plant_odo_departure, plant_odo_arrival, si_no, drop_number, customer, delivery_address, dds_id, address, 
-         customer_arrival, customer_departure, remarks, form_type, created_by, created_at, synced, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         customer_arrival, customer_departure, quantity, remarks, form_type, created_by, created_at, synced, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tripLog.dlf_code,
         tripLog.driver,
@@ -211,6 +212,7 @@ export const addTripLog = async (tripLog) => {
         tripLog.address || null,
         tripLog.customer_arrival || null,
         tripLog.customer_departure || null,
+        tripLog.quantity || null,
         tripLog.remarks || null,
         tripLog.form_type || 'delivery',
         tripLog.created_by,
@@ -234,7 +236,7 @@ export const updateTripLog = async (id, tripLog) => {
       `UPDATE trip_logs 
        SET dlf_code = ?, driver = ?, helper = ?, plate_no = ?, trip_count = ?, company_departure = ?, company_arrival = ?,
            dr_no = ?, plant_odo_departure = ?, plant_odo_arrival = ?, si_no = ?, drop_number = ?,
-           customer = ?, delivery_address = ?, dds_id = ?, address = ?, customer_arrival = ?, customer_departure = ?, remarks = ?, form_type = ?, synced = ?, sync_status = ?
+           customer = ?, delivery_address = ?, dds_id = ?, address = ?, customer_arrival = ?, customer_departure = ?, quantity = ?, remarks = ?, form_type = ?, synced = ?, sync_status = ?
        WHERE id = ?`,
       [
         tripLog.dlf_code,
@@ -255,6 +257,7 @@ export const updateTripLog = async (id, tripLog) => {
         tripLog.address || null,
         tripLog.customer_arrival || null,
         tripLog.customer_departure || null,
+        tripLog.quantity || null,
         tripLog.remarks || null,
         tripLog.form_type || 'delivery',
         tripLog.synced,
