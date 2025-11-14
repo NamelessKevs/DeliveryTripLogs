@@ -159,7 +159,7 @@ export const seedTestUser = async () => {
     await database.runAsync(
       `INSERT OR IGNORE INTO users (first_name, middle_name, last_name, username, password, position)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      ['Erwin', 'Moya', 'Flores', 'test', 'test', 'Logistics Driver']
+      ['Ryan', 'Ralleca', 'Acosta', 'test', 'test', 'Service Vehicle Driver']
     );
     console.log('Test user seeded');
   } catch (error) {
@@ -682,10 +682,10 @@ export const generateTfpId = async (userName) => {
       initials = nameParts[0].substring(0, 3).toUpperCase();
     }
     
-    return `TFP-${nextId}-${initials}`;
+    return `RFF-${nextId}-${initials}`;
   } catch (error) {
     console.error('Generate TFP ID error:', error);
-    return 'TFP-1-XXX';
+    return 'RFF-1-XXX';
   }
 };
 

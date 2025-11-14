@@ -397,7 +397,7 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
         
         {/* TFP ID Display */}
         <View style={styles.infoBox}>
-          <Text style={styles.infoLabel}>TFP ID:</Text>
+          <Text style={styles.infoLabel}>RFF ID:</Text>
           <Text style={styles.infoValue}>{tfpId}</Text>
         </View>
 

@@ -13,12 +13,14 @@ import {
 } from 'react-native';
 import { getAllUsers, updateUser, deleteUser, getCurrentUser, initDatabase } from '../database/db';
 import * as SQLite from 'expo-sqlite';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const UserManagementScreen = ({ navigation }) => {
   const [users, setUsers] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [editPosition, setEditPosition] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [showPositionPicker, setShowPositionPicker] = useState(false);
@@ -232,7 +234,6 @@ const UserManagementScreen = ({ navigation }) => {
                 style: 'destructive',
                 onPress: async () => {
                   try {
-                    // Manually drop and recreate all tables
                     const db = await SQLite.openDatabaseAsync('DeliveryTripLogs.db');
                     
                     await db.execAsync(`
@@ -245,13 +246,23 @@ const UserManagementScreen = ({ navigation }) => {
                       DROP TABLE IF EXISTS cached_trucks;
                     `);
                     
-                    // Recreate tables
                     await initDatabase();
+                    
+                    // Force logout
+                    await AsyncStorage.removeItem('currentUser');
                     
                     Alert.alert(
                       'Success', 
-                      'Database reset complete. Please restart the app.',
-                      [{ text: 'OK' }]
+                      'Database reset. Redirecting to login...',
+                      [{ 
+                        text: 'OK',
+                        onPress: () => {
+                          navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'Login' }],
+                          });
+                        }
+                      }]
                     );
                   } catch (error) {
                     Alert.alert('Error', 'Failed to reset database: ' + error.message);
@@ -288,7 +299,7 @@ const UserManagementScreen = ({ navigation }) => {
                 <View style={styles.pickerContent}>
                   <Text style={styles.modalTitle}>Select Position</Text>
                   {['Logistics Driver', 'Service Vehicle Driver'].map((pos, idx) => (
-                    <TouchableOpacity key={idx} style={styles.pickerItem} onPress={() => {setPosition(pos); setShowPositionPicker(false);}}>
+                    <TouchableOpacity key={idx} style={styles.pickerItem} onPress={() => {setForm({ ...form, position: pos }); setShowPositionPicker(false);}}>
                       <Text style={styles.pickerItemText}>{pos}</Text>
                     </TouchableOpacity>
                   ))}

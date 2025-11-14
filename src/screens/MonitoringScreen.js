@@ -200,7 +200,7 @@ const MonitoringScreen = ({navigation}) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Fuel Monitoring</Text>
+          <Text style={styles.title}>RFF List</Text>
         </View>
         <View>
           <Text style={styles.count}>

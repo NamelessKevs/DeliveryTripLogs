@@ -25,7 +25,7 @@ export default function App() {
     const initialize = async () => {
       try {
         await initDatabase();
-        // await seedTestUser();
+        await seedTestUser();
         
         // Request location permission
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -110,7 +110,7 @@ export default function App() {
           <Stack.Screen
             name="Monitoring"
             component={MonitoringScreen}
-            options={{ title: 'Truck Fuel Monitoring' }}
+            options={{ title: 'Refueling Monitoring' }}
           />
           <Stack.Screen
             name="TruckFuelForm"
