@@ -150,6 +150,7 @@ export const checkAndSyncFuel = async () => {
       arrival_time: record.arrival_time,
       created_at: record.created_at,
       created_by: record.created_by,
+      tin_no: record.tin_no,
     }));
 
     console.log('📤 Syncing fuel data:', JSON.stringify(recordsToSync, null, 2));

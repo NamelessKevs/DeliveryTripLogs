@@ -46,6 +46,7 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
   const [odometerReadings, setOdometerReadings] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(null);
   const [referenceNo, setReferenceNo] = useState('');
+  const [tinNo, setTinNo] = useState('');
   const [payee, setPayee] = useState('');
   const [totalLiters, setTotalLiters] = useState('');
   const [costPerLiter, setCostPerLiter] = useState('');
@@ -127,6 +128,7 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
     setOdometerReadings(record.odometer_readings || '');
     setInvoiceDate(record.invoice_date);
     setReferenceNo(record.reference_no || '');
+    setTinNo(record.tin_no || '');
     setPayee(record.payee || '');
     setTotalLiters(record.total_liters || '');
     setCostPerLiter(record.cost_per_liter || '');
@@ -246,6 +248,7 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
         odometer_readings: odometerReadings || null,
         invoice_date: invoiceDate,
         reference_no: referenceNo || null,
+        tin_no: tinNo || null,
         particular: 'Fuel',
         payee: payee || null,
         total_liters: totalLiters || null,
@@ -313,6 +316,11 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
       Alert.alert('Error', 'Please enter reference number');
       return;
     }
+
+    if (!tinNo.trim()) {
+      Alert.alert('Error', 'Please enter reference number');
+      return;
+    }
     
     if (!payee.trim()) {
       Alert.alert('Error', 'Please enter payee');
@@ -351,6 +359,7 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
         odometer_readings: odometerReadings.trim(),
         invoice_date: invoiceDate,
         reference_no: referenceNo.trim(),
+        tin_no: tinNo.trim(),
         particular: 'Fuel',
         payee: payee.trim(),
         total_liters: totalLiters,
@@ -559,6 +568,16 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
             keyboardType='numeric'
             value={referenceNo}
             onChangeText={setReferenceNo}
+          />
+
+          {/* TIN No */}
+          <Text style={styles.label}>TIN No <Text style={styles.required}>*</Text></Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter TIN number"
+            keyboardType='numeric'
+            value={tinNo}
+            onChangeText={setTinNo}
           />
 
           {/* Payee */}

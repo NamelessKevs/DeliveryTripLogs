@@ -129,6 +129,7 @@ export const initDatabase = async () => {
         odometer_readings TEXT,
         invoice_date TEXT,
         reference_no TEXT,
+        tin_no TEXT,
         particular TEXT DEFAULT 'Fuel',
         payee TEXT,
         total_liters TEXT,
@@ -696,10 +697,10 @@ export const addFuelRecord = async (record) => {
     const result = await database.runAsync(
       `INSERT INTO truck_fuel_monitoring 
         (tfp_id, utility_driver, truck_plate, type, cash_advance,
-         departure_time, odometer_readings, invoice_date, reference_no, particular,
+         departure_time, odometer_readings, invoice_date, reference_no, tin_no, particular,
          payee, total_liters, cost_per_liter, total_amount, vat_amount, net_amount,
          arrival_time, created_at, created_by, synced, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         record.tfp_id,
         record.utility_driver,
@@ -710,6 +711,7 @@ export const addFuelRecord = async (record) => {
         record.odometer_readings || null,
         record.invoice_date || null,
         record.reference_no || null,
+        record.tin_no || null,
         record.particular || 'Fuel',
         record.payee || null,
         record.total_liters || null,
@@ -738,7 +740,7 @@ export const updateFuelRecord = async (id, record) => {
     await database.runAsync(
       `UPDATE truck_fuel_monitoring 
        SET utility_driver = ?, truck_plate = ?, type = ?, cash_advance = ?,
-           departure_time = ?, odometer_readings = ?, invoice_date = ?, reference_no = ?,
+           departure_time = ?, odometer_readings = ?, invoice_date = ?, reference_no = ?, tin_no = ?,
            particular = ?, payee = ?, total_liters = ?, cost_per_liter = ?,
            total_amount = ?, vat_amount = ?, net_amount = ?, arrival_time = ?,
            synced = ?, sync_status = ?
@@ -752,6 +754,7 @@ export const updateFuelRecord = async (id, record) => {
         record.odometer_readings || null,
         record.invoice_date || null,
         record.reference_no || null,
+        record.tin_no || null,
         record.particular || 'Fuel',
         record.payee || null,
         record.total_liters || null,
