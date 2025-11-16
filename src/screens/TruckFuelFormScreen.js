@@ -22,6 +22,8 @@ import {
   getLocalTimestamp,
   getCachedTrucks,
   saveCachedTrucks,
+  savePayee,
+  searchPayees
 } from '../database/db';
 import { fetchTrucksFromAPI } from '../api/maintenanceApi';
 
@@ -54,6 +56,9 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
   const [vatAmount, setVatAmount] = useState('');
   const [netAmount, setNetAmount] = useState('');
   const [arrivalTime, setArrivalTime] = useState(null);
+
+  const [payeeSuggestions, setPayeeSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
   // Date picker states
   const [showInvoiceDatePicker, setShowInvoiceDatePicker] = useState(false);
@@ -225,6 +230,24 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
     }
   };
 
+  const handlePayeeChange = async (text) => {
+    setPayee(text);
+
+    if (text.length > 0) {
+      const results = await searchPayees(text);
+      setPayeeSuggestions(results);
+      setShowSuggestions(results.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSelectPayee = (selectedPayee) => {
+    setPayee(selectedPayee.payee_name);
+    setTinNo(selectedPayee.tin_no);
+    setShowSuggestions(false);
+  };
+
   const handleSaveDraft = async () => {
     // Validation for draft
     if (!utilityDriver.trim()) {
@@ -285,58 +308,39 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
     if (!utilityDriver.trim()) {
       Alert.alert('Error', 'Please enter Service Vehicle Driver name');
       return;
-    }
-    
+    }  
     if (!truckPlate.trim()) {
       Alert.alert('Error', 'Please enter truck plate number');
       return;
     }
-    
     if (!departureTime) {
       Alert.alert('Error', 'Please capture departure time');
       return;
     }
-    
     if (!arrivalTime) {
       Alert.alert('Error', 'Please capture arrival time');
       return;
     }
-    
     if (!odometerReadings.trim()) {
       Alert.alert('Error', 'Please enter odometer readings');
       return;
     }
-    
     if (!invoiceDate) {
       Alert.alert('Error', 'Please select invoice date');
       return;
     }
-    
-    if (!referenceNo.trim()) {
-      Alert.alert('Error', 'Please enter reference number');
-      return;
-    }
-
-    if (!tinNo.trim()) {
-      Alert.alert('Error', 'Please enter reference number');
-      return;
-    }
-    
     if (!payee.trim()) {
       Alert.alert('Error', 'Please enter payee');
       return;
     }
-
     if (!type.trim()) {
       Alert.alert('Error', 'Please enter type');
       return;
     }
-    
     if (!totalLiters || parseFloat(totalLiters) <= 0) {
       Alert.alert('Error', 'Please enter valid total liters');
       return;
     }
-    
     if (!costPerLiter || parseFloat(costPerLiter) <= 0) {
       Alert.alert('Error', 'Please enter valid cost per liter');
       return;
@@ -381,6 +385,11 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
         }
       } else {
         await addFuelRecord(recordData);
+      }
+
+      // Save payee for future use (only if both filled)
+      if (payee.trim() && tinNo.trim()) {
+        await savePayee(payee.trim(), tinNo.trim());
       }
       
       Alert.alert('Success', 'Fuel record finalized and ready to sync!', [
@@ -560,15 +569,29 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
             </Text>
           </TouchableOpacity>
 
-          {/* Reference No */}
-          <Text style={styles.label}>Reference No <Text style={styles.required}>*</Text></Text>
+          {/* Payee */}
+          <Text style={styles.label}>Payee <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter reference number"
-            keyboardType='numeric'
-            value={referenceNo}
-            onChangeText={setReferenceNo}
+            placeholder="Enter payee name"
+            value={payee}
+            onChangeText={handlePayeeChange}
           />
+          {/*Suggestions Dropdown*/}
+          {showSuggestions && (
+            <View style={styles.suggestionsContainer}>
+              {payeeSuggestions.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.suggestionItem}
+                  onPress={() => handleSelectPayee(item)}
+                >
+                  <Text style={styles.suggestionPayee}>{item.payee_name}</Text>
+                  <Text style={styles.suggestionTin}>TIN: {item.tin_no}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           {/* TIN No */}
           <Text style={styles.label}>TIN No <Text style={styles.required}>*</Text></Text>
@@ -580,13 +603,14 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
             onChangeText={setTinNo}
           />
 
-          {/* Payee */}
-          <Text style={styles.label}>Payee <Text style={styles.required}>*</Text></Text>
+          {/* Reference No */}
+          <Text style={styles.label}>Reference No <Text style={styles.required}>*</Text></Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter payee name"
-            value={payee}
-            onChangeText={setPayee}
+            placeholder="Enter reference number"
+            keyboardType='numeric'
+            value={referenceNo}
+            onChangeText={setReferenceNo}
           />
 
           {/* Total Liters */}
@@ -687,6 +711,30 @@ const styles = StyleSheet.create({
   },
   required: {
     color: 'red',
+  },
+  suggestionsContainer: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginTop: -10,
+    marginBottom: 10,
+    maxHeight: 200,
+  },
+  suggestionItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  suggestionPayee: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  suggestionTin: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   centerContainer: {
     flex: 1,

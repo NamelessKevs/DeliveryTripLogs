@@ -145,6 +145,16 @@ export const initDatabase = async () => {
       );
     `);
 
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS saved_payees (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        payee_name TEXT NOT NULL UNIQUE,
+        tin_no TEXT NOT NULL,
+        last_used TEXT DEFAULT CURRENT_TIMESTAMP,
+        usage_count INTEGER DEFAULT 1
+      );
+    `);
+
     console.log('✅Application Ready To Use');
     return db;
   } catch (error) {
@@ -893,6 +903,54 @@ export const getCachedTrucks = async () => {
     return trucks.map(t => t.truck_plate);
   } catch (error) {
     console.error('Get cached trucks error:', error);
+    return [];
+  }
+};
+
+// ---------------------
+// Payee + TIN No cached function
+// ---------------------
+export const savePayee = async (payeeName, tinNo) => {
+  try {
+    const database = ensureDbInitialized();
+
+    const existing = await database.getFirstAsync(
+      'SELECT * FROM saved_payees WHERE payee_name = ?',
+      [payeeName]
+    );
+
+    if (existing) {
+      await database.runAsync(
+        `UPDATE saved_payees
+        SET tin_no = ?, last_used = ?, usage_count = usage_count + 1
+        WHERE payee_name = ?`,
+        [tinNo, getLocalTimestamp(), payeeName]
+      );
+    } else {
+      await database.runAsync(
+        `INSERT INTO saved_payees (payee_name, tin_no, last_used, usage_count)
+        VALUES (?, ?, ?, 1)`,
+        [payeeName, tinNo, getLocalTimestamp()]
+      );
+    }
+  } catch (error) {
+    console.error('Save payee error:', error);
+  }
+};
+
+export const searchPayees = async (searchText) => {
+  try {
+    const database = ensureDbInitialized();
+    const results = await database.getAllAsync(
+      `SELECT * FROM saved_payees
+       WHERE payee_name LIKE ?
+       ORDER BY usage_count DESC, last_used DESC
+       LIMIT 10`,
+       [`%${searchText}%`]
+    );
+    return results;
+  } catch (error) {
+    console.error('Search payees error:', error);
     return [];
   }
 };
