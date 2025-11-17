@@ -1,5 +1,7 @@
 import * as Network from 'expo-network';
-import {getUnsyncedTripLogs, markTripAsSynced, getTripLogsByDeliveryId, getExpensesByDeliveryId,getUnsyncedFuelRecords, markFuelRecordAsSynced} from '../database/db';
+import * as SQLite from 'expo-sqlite';
+import { API_CONFIG } from '../config';
+import {getUnsyncedTripLogs, markTripAsSynced, getTripLogsByDeliveryId, getExpensesByDeliveryId, getUnsyncedFuelRecords, markFuelRecordAsSynced, getPhotoBase64, deleteLocalPhoto, updateFuelRecord, getFuelRecordsWithUnuploadedPhotos} from '../database/db';
 import {syncTripsToGoogleSheets, syncFuelToGoogleSheets} from '../api/tripApi';
 
 let isSyncing = false;
@@ -103,7 +105,6 @@ export const checkAndSync = async () => {
 };
 
 export const checkAndSyncFuel = async () => {
-  // Prevent concurrent syncs
   if (isSyncing) {
     console.log('Sync already in progress, skipping...');
     return {success: false, message: 'Sync already in progress'};
@@ -120,6 +121,9 @@ export const checkAndSyncFuel = async () => {
       console.log('No internet connection');
       return {success: false, message: 'No internet connection'};
     }
+
+    console.log('Checking for photos to upload...');
+    await uploadReceiptPhotos();
 
     const unsyncedRecords = await getUnsyncedFuelRecords();
     
@@ -151,6 +155,7 @@ export const checkAndSyncFuel = async () => {
       created_at: record.created_at,
       created_by: record.created_by,
       tin_no: record.tin_no,
+      receipt_photo_url: record.receipt_photo_url,
     }));
 
     console.log('📤 Syncing fuel data:', JSON.stringify(recordsToSync, null, 2));
@@ -176,6 +181,81 @@ export const checkAndSyncFuel = async () => {
     return {success: false, message: error.message};
   } finally {
     isSyncing = false;
+  }
+};
+
+// Upload receipt photos to Google Drive
+export const uploadReceiptPhotos = async () => {
+  try {
+    // Get records with photos that haven't been uploaded yet
+    const recordsWithPhotos = await getFuelRecordsWithUnuploadedPhotos();
+
+    if (recordsWithPhotos.length === 0) {
+      console.log('No photos to upload');
+      return { success: true, uploaded: 0, message: 'No photos to upload' };
+    }
+
+    console.log(`Found ${recordsWithPhotos.length} photos to upload`);
+    let uploaded = 0;
+    let failed = 0;
+
+    for (const record of recordsWithPhotos) {
+      try {
+        console.log(`Uploading photo for ${record.tfp_id}...`);
+        
+        // Get photo as base64
+        const base64Data = await getPhotoBase64(record.receipt_photo_path);
+        const fileName = `receipt_${record.tfp_id}.jpg`;
+
+        // Upload to Google Drive
+        const response = await fetch(API_CONFIG.GOOGLE_SHEETS_FUEL_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'uploadPhoto',
+            base64Data: base64Data,
+            fileName: fileName,
+            tfpId: record.tfp_id,
+          }),
+          timeout: 30000, // 30 second timeout for photo upload
+        });
+
+        const result = await response.json();
+        console.log(`Upload result for ${record.tfp_id}:`, result);
+
+        if (result.success) {
+          // Update record with Drive URL and mark as uploaded
+          await updateFuelRecord(record.id, {
+            ...record,
+            receipt_photo_url: result.fileUrl,
+            photo_uploaded: 1,
+          });
+
+          // Delete local photo file ONLY after successful upload
+          await deleteLocalPhoto(record.receipt_photo_path);
+
+          uploaded++;
+          console.log(`✅ Uploaded photo for ${record.tfp_id}`);
+        } else {
+          failed++;
+          console.error(`❌ Failed to upload photo for ${record.tfp_id}:`, result.error);
+        }
+      } catch (error) {
+        failed++;
+        console.error(`❌ Error uploading photo for ${record.tfp_id}:`, error);
+      }
+    }
+
+    return {
+      success: true,
+      uploaded: uploaded,
+      failed: failed,
+      message: `${uploaded} photos uploaded, ${failed} failed`,
+    };
+
+  } catch (error) {
+    console.error('Upload receipt photos error:', error);
+    return { success: false, error: error.message };
   }
 };
 

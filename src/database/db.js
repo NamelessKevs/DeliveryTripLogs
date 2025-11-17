@@ -1,5 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 
 let db;
 
@@ -132,6 +134,9 @@ export const initDatabase = async () => {
         tin_no TEXT,
         particular TEXT DEFAULT 'Fuel',
         payee TEXT,
+        receipt_photo_path TEXT,
+        receipt_photo_url TEXT,
+        photo_uploaded INTEGER DEFAULT 0,
         total_liters TEXT,
         cost_per_liter TEXT,
         total_amount TEXT,
@@ -708,9 +713,9 @@ export const addFuelRecord = async (record) => {
       `INSERT INTO truck_fuel_monitoring 
         (tfp_id, utility_driver, truck_plate, type, cash_advance,
          departure_time, odometer_readings, invoice_date, reference_no, tin_no, particular,
-         payee, total_liters, cost_per_liter, total_amount, vat_amount, net_amount,
+         payee, receipt_photo_path, receipt_photo_url, photo_uploaded, total_liters, cost_per_liter, total_amount, vat_amount, net_amount,
          arrival_time, created_at, created_by, synced, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         record.tfp_id,
         record.utility_driver,
@@ -724,6 +729,9 @@ export const addFuelRecord = async (record) => {
         record.tin_no || null,
         record.particular || 'Fuel',
         record.payee || null,
+        record.receipt_photo_path || null,
+        record.receipt_photo_url || null,
+        record.photo_uploaded || 0,
         record.total_liters || null,
         record.cost_per_liter || null,
         record.total_amount || null,
@@ -751,7 +759,7 @@ export const updateFuelRecord = async (id, record) => {
       `UPDATE truck_fuel_monitoring 
        SET utility_driver = ?, truck_plate = ?, type = ?, cash_advance = ?,
            departure_time = ?, odometer_readings = ?, invoice_date = ?, reference_no = ?, tin_no = ?,
-           particular = ?, payee = ?, total_liters = ?, cost_per_liter = ?,
+           particular = ?, payee = ?, receipt_photo_path = ?, receipt_photo_url = ?, photo_uploaded = ?, total_liters = ?, cost_per_liter = ?,
            total_amount = ?, vat_amount = ?, net_amount = ?, arrival_time = ?,
            synced = ?, sync_status = ?
        WHERE id = ?`,
@@ -767,6 +775,9 @@ export const updateFuelRecord = async (id, record) => {
         record.tin_no || null,
         record.particular || 'Fuel',
         record.payee || null,
+        record.receipt_photo_path || null,
+        record.receipt_photo_url || null,
+        record.photo_uploaded,
         record.total_liters || null,
         record.cost_per_liter || null,
         record.total_amount || null,
@@ -780,6 +791,108 @@ export const updateFuelRecord = async (id, record) => {
     );
   } catch (error) {
     console.error('Update fuel record error:', error);
+    throw error;
+  }
+};
+
+export const takePhoto = async (useCamera = true) => {
+  try {
+    const permissionResult = useCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      throw new Error('Permission to access camera/gallery is required!');
+    }
+
+    const result = useCamera
+      ? await ImagePicker.launchCameraAsync({
+        quality: 0.7,
+        allowsEditing: false,
+      })
+      : await ImagePicker.launchImageLibraryAsync({
+        quality: 0.7,
+        allowsEditing: false,
+        mediaTypes: ['images'],
+      });
+
+    if (result.canceled) {
+      return null;
+    }
+
+    return result.assets[0].uri;
+  } catch (error ) {
+    console.error('Take photo error:', error);
+    throw error;
+  }
+};
+
+export const savePhotoLocally = async (photoUri, tfpId) => {
+  try {
+    const fileName = `receipt_${tfpId}_${Date.now()}.jpg`;
+    const directoryUri = `${FileSystem.documentDirectory}receipts/`;
+    
+    // Create receipts directory if it doesn't exist
+    const dirInfo = await FileSystem.getInfoAsync(directoryUri);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(directoryUri, { intermediates: true });
+    }
+
+    const localPath = `${directoryUri}${fileName}`;
+    
+    // Copy photo to app directory
+    await FileSystem.copyAsync({
+      from: photoUri,
+      to: localPath,
+    });
+
+    return localPath;
+  } catch (error) {
+    console.error('Save photo locally error:', error);
+    throw error;
+  }
+};
+
+export const deleteLocalPhoto = async (photoPath) => {
+  try {
+    if (!photoPath) return;
+    
+    const fileInfo = await FileSystem.getInfoAsync(photoPath);
+    if (fileInfo.exists) {
+      await FileSystem.deleteAsync(photoPath);
+      console.log('Deleted local photo:', photoPath);
+    }
+  } catch (error) {
+    console.error('Delete local photo error:', error);
+    // Don't throw - deletion failure shouldn't break the app
+  }
+};
+
+// Get photo as base64 (for uploading to Drive)
+export const getPhotoBase64 = async (photoPath) => {
+  try {
+    const base64 = await FileSystem.readAsStringAsync(photoPath, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return base64;
+  } catch (error) {
+    console.error('Get photo base64 error:', error);
+    throw error;
+  }
+};
+
+export const getFuelRecordsWithUnuploadedPhotos = async () => {
+  try {
+    const database = ensureDbInitialized();
+    const records = await database.getAllAsync(
+      `SELECT * FROM truck_fuel_monitoring 
+       WHERE receipt_photo_path IS NOT NULL 
+       AND photo_uploaded = 0
+       AND synced = 0`
+    );
+    return records;
+  } catch (error) {
+    console.error('Get records with unuploaded photos error:', error);
     throw error;
   }
 };

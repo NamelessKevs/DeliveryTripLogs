@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
+  Image
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Location from 'expo-location';
@@ -23,7 +24,10 @@ import {
   getCachedTrucks,
   saveCachedTrucks,
   savePayee,
-  searchPayees
+  searchPayees,
+  takePhoto,
+  savePhotoLocally,
+  deleteLocalPhoto
 } from '../database/db';
 import { fetchTrucksFromAPI } from '../api/maintenanceApi';
 
@@ -50,6 +54,9 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
   const [referenceNo, setReferenceNo] = useState('');
   const [tinNo, setTinNo] = useState('');
   const [payee, setPayee] = useState('');
+  const [receiptPhoto, setReceiptPhoto] = useState(null); // Local path
+  const [receiptPhotoUrl, setReceiptPhotoUrl] = useState(null); // Drive URL
+  const [photoUploaded, setPhotoUploaded] = useState(0);
   const [totalLiters, setTotalLiters] = useState('');
   const [costPerLiter, setCostPerLiter] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
@@ -135,6 +142,9 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
     setReferenceNo(record.reference_no || '');
     setTinNo(record.tin_no || '');
     setPayee(record.payee || '');
+    setReceiptPhoto(record.receipt_photo_path || null);
+    setReceiptPhotoUrl(record.receipt_photo_url || null);
+    setPhotoUploaded(record.photo_uploaded || 0);
     setTotalLiters(record.total_liters || '');
     setCostPerLiter(record.cost_per_liter || '');
     setTotalAmount(record.total_amount || '');
@@ -248,6 +258,48 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
     setShowSuggestions(false);
   };
 
+  const handleTakePhoto = async (useCamera) => {
+    try {
+      const photoUri = await takePhoto(useCamera);
+      
+      if (photoUri) {
+        // Delete old photo if exists (Option A - clean approach)
+        if (receiptPhoto) {
+          await deleteLocalPhoto(receiptPhoto);
+        }
+        
+        // Save new photo locally
+        const localPath = await savePhotoLocally(photoUri, tfpId);
+        setReceiptPhoto(localPath);
+        setPhotoUploaded(0); // Mark as not uploaded yet
+        
+        Alert.alert('Success', 'Receipt photo saved!');
+      }
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    Alert.alert(
+      'Remove Photo',
+      'Are you sure you want to remove this receipt photo?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteLocalPhoto(receiptPhoto);
+            setReceiptPhoto(null);
+            setReceiptPhotoUrl(null);
+            setPhotoUploaded(0);
+          }
+        }
+      ]
+    );
+  };
+
   const handleSaveDraft = async () => {
     // Validation for draft
     if (!utilityDriver.trim()) {
@@ -274,6 +326,9 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
         tin_no: tinNo || null,
         particular: 'Fuel',
         payee: payee || null,
+        receipt_photo_path: receiptPhoto || null,
+        receipt_photo_url: receiptPhotoUrl || null,
+        photo_uploaded: photoUploaded,
         total_liters: totalLiters || null,
         cost_per_liter: costPerLiter || null,
         total_amount: totalAmount || null,
@@ -366,6 +421,9 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
         tin_no: tinNo.trim(),
         particular: 'Fuel',
         payee: payee.trim(),
+        receipt_photo_path: receiptPhoto || null,
+        receipt_photo_url: receiptPhotoUrl || null,
+        photo_uploaded: photoUploaded,
         total_liters: totalLiters,
         cost_per_liter: costPerLiter,
         total_amount: totalAmount,
@@ -577,6 +635,49 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
             value={payee}
             onChangeText={handlePayeeChange}
           />
+
+          {/* Receipt Photo */}
+          <Text style={styles.label}>Receipt Photo</Text>
+          {receiptPhoto ? (
+            <View style={styles.photoContainer}>
+              <Image 
+                source={{ uri: photoUploaded === 1 && receiptPhotoUrl ? receiptPhotoUrl : receiptPhoto }} 
+                style={styles.photoPreview} 
+              />
+              {photoUploaded === 1 && (
+                <Text style={styles.uploadedBadge}>☁️ Uploaded to Drive</Text>
+              )}
+              <View style={styles.photoButtons}>
+                <TouchableOpacity
+                  style={styles.retakeButton}
+                  onPress={() => handleTakePhoto(true)}
+                >
+                  <Text style={styles.retakeButtonText}>📷 Retake</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.removePhotoButton}
+                  onPress={handleRemovePhoto}
+                >
+                  <Text style={styles.removePhotoButtonText}>🗑️ Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.photoButtons}>
+              <TouchableOpacity
+                style={styles.cameraButton}
+                onPress={() => handleTakePhoto(true)}
+              >
+                <Text style={styles.cameraButtonText}>📷 Take Photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.galleryButton}
+                onPress={() => handleTakePhoto(false)}
+              >
+                <Text style={styles.galleryButtonText}>🖼️ Choose from Gallery</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {/*Suggestions Dropdown*/}
           {showSuggestions && (
             <View style={styles.suggestionsContainer}>
@@ -709,8 +810,79 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  photoContainer: {
+    marginBottom: 12,
+  },
+  photoPreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#f0f0f0',
+  },
+  photoButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cameraButton: {
+    flex: 1,
+    backgroundColor: '#1FCFFF',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cameraButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  galleryButton: {
+    flex: 1,
+    backgroundColor: '#FF9500',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  galleryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  retakeButton: {
+    flex: 1,
+    backgroundColor: '#1FCFFF',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  retakeButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  removePhotoButton: {
+    flex: 1,
+    backgroundColor: '#ff6b6b',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  removePhotoButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   required: {
     color: 'red',
+  },
+  uploadedBadge: {
+    backgroundColor: '#4CAF50',
+    color: '#fff',
+    padding: 4,
+    borderRadius: 4,
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   suggestionsContainer: {
     backgroundColor: '#fff',
