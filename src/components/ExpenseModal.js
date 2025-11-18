@@ -1,14 +1,6 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  ScrollView,
-  Alert,
-} from 'react-native';
+import {View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert} from 'react-native';
+import { styles, Colors } from '../styles/styles';
 
 const ExpenseModal = ({ visible, expenseTypes, onSave, onCancel }) => {
   const [selectedType, setSelectedType] = useState('');
@@ -34,13 +26,13 @@ const ExpenseModal = ({ visible, expenseTypes, onSave, onCancel }) => {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Add Expense</Text>
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={styles.expenseModalOverlay}>
+        <View style={styles.expenseModalContent}>
+          <Text style={styles.expenseModalTitle}>Add Expense</Text>
 
           {/* Expense Type Selector */}
-          <Text style={styles.label}>Expense Type *</Text>
+          <Text style={styles.expenseModalLabel}>Expense Type *</Text>
           <TouchableOpacity
             style={styles.dropdownButton}
             onPress={() => setShowTypePicker(true)}
@@ -51,7 +43,7 @@ const ExpenseModal = ({ visible, expenseTypes, onSave, onCancel }) => {
           </TouchableOpacity>
 
           {/* Amount Input */}
-          <Text style={styles.label}>Amount (₱) *</Text>
+          <Text style={styles.expenseModalLabel}>Amount (₱) *</Text>
           <TextInput
             style={styles.input}
             placeholder="e.g., 500"
@@ -61,22 +53,22 @@ const ExpenseModal = ({ visible, expenseTypes, onSave, onCancel }) => {
           />
 
           {/* Buttons */}
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+          <View style={styles.expenseModalButtonRow}>
+            <TouchableOpacity style={styles.expenseModalCancelButton} onPress={onCancel}>
+              <Text style={styles.expenseModalCancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.saveButtonText}>Save</Text>
+            <TouchableOpacity style={styles.expenseModalSaveButton} onPress={handleSave}>
+              <Text style={styles.expenseModalSaveButtonText}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
       {/* Expense Type Picker Modal */}
-      <Modal visible={showTypePicker} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      <Modal visible={showTypePicker} animationType="fade" transparent>
+        <View style={styles.expenseModalOverlay}>
           <View style={styles.pickerContent}>
-            <Text style={styles.modalTitle}>Select Expense Type</Text>
+            <Text style={styles.expenseModalTitle}>Select Expense Type</Text>
             <ScrollView style={styles.pickerScroll}>
               {expenseTypes.map((type, idx) => (
                 <TouchableOpacity
@@ -103,110 +95,5 @@ const ExpenseModal = ({ visible, expenseTypes, onSave, onCancel }) => {
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  dropdownButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    backgroundColor: '#fff',
-    marginBottom: 15,
-  },
-  dropdownText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-    marginBottom: 15,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#ccc',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: '#1FCFFF',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  pickerContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    maxHeight: '70%',
-  },
-  pickerScroll: {
-    maxHeight: 300,
-  },
-  pickerItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  pickerItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  pickerCloseButton: {
-    backgroundColor: '#ccc',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  pickerCloseButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
 
 export default ExpenseModal;

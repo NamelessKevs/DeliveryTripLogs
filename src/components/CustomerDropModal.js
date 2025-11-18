@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  ScrollView,
-  Alert,
-} from 'react-native';
+import {View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ScrollView, Alert} from 'react-native';
 import * as Location from 'expo-location';
+import { styles, Colors } from '../styles/styles';
 
 const CustomerDropModal = ({ 
   visible, 
@@ -146,11 +138,6 @@ const CustomerDropModal = ({
       return;
     }
 
-    // if (!address.trim()) {
-    //   Alert.alert('Error', 'Please enter address');
-    //   return;
-    // }
-
     if (!arrivalTime) {
       Alert.alert('Error', 'Arrival time is required');
       return;
@@ -214,16 +201,16 @@ const CustomerDropModal = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={styles.customerDropModalOverlay}>
+        <View style={styles.customerDropModalContent}>
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.modalTitle}>
+            <Text style={styles.customerDropModalTitle}>
               {editingDrop ? 'Edit Customer Drop' : 'Log Customer Drop'}
             </Text>
 
             {/* Customer Selection */}
-            <Text style={styles.label}>Choose Customer</Text>
+            <Text style={styles.customerDropLabel}>Choose Customer</Text>
               {delivery?.customers.map((customer, idx) => {
                 const uniqueKey = `${customer.customer_name}|${customer.delivery_address}`;
                 const isLogged = loggedCustomers.includes(uniqueKey);
@@ -234,23 +221,23 @@ const CustomerDropModal = ({
                   <TouchableOpacity
                     key={idx}
                     style={[
-                      styles.radioOption,
-                      isSelected && styles.radioOptionSelected,
-                      isDisabled && styles.radioOptionDisabled,
+                      styles.customerDropRadioOption,
+                      isSelected && styles.customerDropRadioOptionSelected,
+                      isDisabled && styles.customerDropRadioOptionDisabled,
                     ]}
                     onPress={() => handleSelectCustomer(customer.customer_name, customer.delivery_address)}
                     disabled={isDisabled}
                   >
-                  <View style={styles.radioButton}>
-                    {isSelected && <View style={styles.radioButtonInner} />}
+                  <View style={styles.customerDropRadioButton}>
+                    {isSelected && <View style={styles.customerDropRadioButtonInner} />}
                   </View>
                   <View style={{flex: 1}}>
-                    <Text style={styles.radioText}>
+                    <Text style={styles.customerDropRadioText}>
                       {customer.customer_name}
-                      {isLogged && <Text style={styles.loggedBadge}> ✓ Logged</Text>}
+                      {isLogged && <Text style={styles.customerDropLoggedBadge}> ✓ Logged</Text>}
                     </Text>
                     {customer.delivery_address && (
-                      <Text style={styles.deliveryAddressSubtext}>
+                      <Text style={styles.customerDropDeliveryAddressSubtext}>
                         📍 {customer.delivery_address}
                       </Text>
                     )}
@@ -259,18 +246,8 @@ const CustomerDropModal = ({
               );
             })}
 
-            {/* Address Input */}
-            {/* <Text style={styles.label}>📍 Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter delivery address"
-              value={address}
-              onChangeText={setAddress}
-              multiline
-            /> */}
-
             {/* DR No */}
-            <Text style={styles.label}>DR No</Text>
+            <Text style={styles.customerDropLabel}>DR No</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter DR number"
@@ -280,7 +257,7 @@ const CustomerDropModal = ({
             />
 
             {/* SI No */}
-            <Text style={styles.label}>SI No</Text>
+            <Text style={styles.customerDropLabel}>SI No</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter SI number"
@@ -290,39 +267,41 @@ const CustomerDropModal = ({
             />
 
             {/* Arrival Time */}
-            <Text style={styles.label}>Arrival Time <Text style={styles.required}>*</Text></Text>
+            <Text style={styles.customerDropLabel}>Arrival Time <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity
-              style={styles.captureButton}
+              style={styles.customerDropCaptureButton}
               onPress={handleCaptureArrival}
             >
-              <Text style={styles.captureButtonText}>
+              <Text style={styles.customerDropCaptureButtonText}>
                 {arrivalTime ? formatTimeDisplay(arrivalTime) : '[Capture Now]'}
               </Text>
             </TouchableOpacity>
 
             {/* Departure Time */}
-            <Text style={styles.label}>Departure Time</Text>
+            <Text style={styles.customerDropLabel}>Departure Time</Text>
             <TouchableOpacity
-              style={styles.captureButton}
+              style={styles.customerDropCaptureButton}
               onPress={handleCaptureDeparture}
             >
-              <Text style={styles.captureButtonText}>
+              <Text style={styles.customerDropCaptureButtonText}>
                 {departureTime ? formatTimeDisplay(departureTime) : '[Capture Now]'}
               </Text>
             </TouchableOpacity>
 
             {/* Quantity */}
-            <Text style={styles.label}>Quantity</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 125400"
-              keyboardType="number-pad"
-              value={quantity}
-              onChangeText={setQuantity}
-            />
+            <View style={styles.hideMe}>
+              <Text style={styles.customerDropLabel}>Quantity</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 125400"
+                keyboardType="number-pad"
+                value={quantity}
+                onChangeText={setQuantity}
+              />
+            </View>
 
             {/* Remarks */}
-            <Text style={styles.label}>Remarks</Text>
+            <Text style={styles.customerDropLabel}>Remarks</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Add remarks or notes"
@@ -333,12 +312,12 @@ const CustomerDropModal = ({
             />
 
             {/* Action Buttons */}
-            <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+            <View style={styles.customerDropButtonRow}>
+              <TouchableOpacity style={styles.customerDropCancelButton} onPress={onCancel}>
+                <Text style={styles.customerDropCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>
+              <TouchableOpacity style={styles.customerDropSaveButton} onPress={handleSave}>
+                <Text style={styles.customerDropSaveButtonText}>
                   {editingDrop ? 'Update Drop' : 'Save Drop'}
                 </Text>
               </TouchableOpacity>
@@ -349,138 +328,5 @@ const CustomerDropModal = ({
     </Modal>
   );
 };
-
-export const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: '90%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 15,
-    marginBottom: 8,
-  },
-  deliveryAddressSubtext: {
-    fontSize: 12,
-    color: '#888888ff',
-    marginTop: 4,
-  },
-  required: {
-    color: 'red',
-  },
-  radioOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: '#fff',
-  },
-  radioOptionSelected: {
-    borderColor: '#1FCFFF',
-    backgroundColor: '#e3f7ff',
-  },
-  radioOptionDisabled: {
-    opacity: 0.5,
-  },
-  radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#1FCFFF',
-    marginRight: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioButtonInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#1FCFFF',
-  },
-  radioText: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-  },
-  loggedBadge: {
-    color: '#10dc17ff',
-    fontWeight: 'bold',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    backgroundColor: '#fff',
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  captureButton: {
-    backgroundColor: '#1FCFFF',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  captureButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  cancelButtonText: {
-    color: '#641',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: '#1FCFFF',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
 
 export default CustomerDropModal;

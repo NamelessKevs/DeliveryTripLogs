@@ -1,35 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  Platform,
-  Image
-} from 'react-native';
+import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Modal, Platform, Image} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Location from 'expo-location';
-import { 
-  getCurrentUser,
-  generateTfpId,
-  addFuelRecord,
-  updateFuelRecord,
-  getFuelRecordByTfpId,
-  getLocalTimestamp,
-  getCachedTrucks,
-  saveCachedTrucks,
-  savePayee,
-  searchPayees,
-  takePhoto,
-  savePhotoLocally,
-  deleteLocalPhoto
-} from '../database/db';
+import {getCurrentUser, generateTfpId, addFuelRecord, updateFuelRecord, getFuelRecordByTfpId, getLocalTimestamp, 
+getCachedTrucks, saveCachedTrucks, savePayee, searchPayees, takePhoto, savePhotoLocally, deleteLocalPhoto} from '../database/db';
 import { fetchTrucksFromAPI } from '../api/maintenanceApi';
+import { styles, Colors } from '../styles/styles';
 
 const TruckFuelFormScreen = ({ navigation, route }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -480,14 +456,6 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
         {/* Draft Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>General Information</Text>
-          
-          {/* <Text style={styles.label}>Service Vehicle Driver <Text style={styles.required}>*</Text></Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter driver name"
-            value={utilityDriver}
-            onChangeText={setUtilityDriver}
-          /> */}
 
           <Text style={styles.label}>Service Vehicle Driver <Text style={styles.required}>*</Text></Text>
           <TextInput
@@ -509,33 +477,33 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
             </TouchableOpacity>
             
             <TouchableOpacity
-              style={styles.refreshIconButton}
+              style={styles.fuelFormRefreshIconButton}
               onPress={handleFetchTrucks}
               disabled={fetchingTrucks}
             >
               {fetchingTrucks ? (
                 <ActivityIndicator size="small" color="#1FCFFF" />
               ) : (
-                <Text style={styles.refreshIcon}>🔄</Text>
+                <Text style={styles.fuelFormRefreshIcon}>🔄</Text>
               )}
             </TouchableOpacity>
           </View>
 
           {/* Truck Picker Modal */}
-          <Modal visible={showTruckPicker} animationType="slide" transparent>
+          <Modal visible={showTruckPicker} animationType="fade" transparent>
             <View style={styles.modalOverlay}>
               <View style={styles.pickerContent}>
                 <Text style={styles.modalTitle}>Select Truck</Text>
                 
                 {cachedTrucks.length === 0 ? (
-                  <View style={styles.emptyPickerContainer}>
-                    <Text style={styles.emptyPickerText}>No trucks cached</Text>
+                  <View style={styles.fuelFormEmptyPickerContainer}>
+                    <Text style={styles.fuelFormEmptyPickerText}>No trucks cached</Text>
                     <TouchableOpacity
-                      style={styles.fetchButton}
+                      style={styles.fuelFormFetchButton}
                       onPress={handleFetchTrucks}
                       disabled={fetchingTrucks}
                     >
-                      <Text style={styles.fetchButtonText}>
+                      <Text style={styles.fuelFormFetchButtonText}>
                         {fetchingTrucks ? 'Fetching...' : 'Fetch Trucks'}
                       </Text>
                     </TouchableOpacity>
@@ -598,10 +566,10 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
           {/* Departure Time */}
           <Text style={styles.label}>Departure Time <Text style={styles.required}>*</Text></Text>
           <TouchableOpacity
-            style={styles.captureButton}
+            style={styles.fuelFormCaptureButton}
             onPress={handleCaptureDeparture}
           >
-            <Text style={styles.captureButtonText}>
+            <Text style={styles.fuelFormCaptureButtonText}>
               {formatTimeOnly(departureTime)}
             </Text>
           </TouchableOpacity>
@@ -619,10 +587,10 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
           {/* Invoice Date */}
           <Text style={styles.label}>Invoice Date <Text style={styles.required}>*</Text></Text>
           <TouchableOpacity
-            style={styles.captureButton}
+            style={styles.fuelFormCaptureButton}
             onPress={() => setShowInvoiceDatePicker(true)}
           >
-            <Text style={styles.captureButtonText}>
+            <Text style={styles.fuelFormCaptureButtonText}>
               {invoiceDate || 'Select date'}
             </Text>
           </TouchableOpacity>
@@ -635,60 +603,17 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
             value={payee}
             onChangeText={handlePayeeChange}
           />
-
-          {/* Receipt Photo */}
-          <Text style={styles.label}>Receipt Photo</Text>
-          {receiptPhoto ? (
-            <View style={styles.photoContainer}>
-              <Image 
-                source={{ uri: photoUploaded === 1 && receiptPhotoUrl ? receiptPhotoUrl : receiptPhoto }} 
-                style={styles.photoPreview} 
-              />
-              {photoUploaded === 1 && (
-                <Text style={styles.uploadedBadge}>☁️ Uploaded to Drive</Text>
-              )}
-              <View style={styles.photoButtons}>
-                <TouchableOpacity
-                  style={styles.retakeButton}
-                  onPress={() => handleTakePhoto(true)}
-                >
-                  <Text style={styles.retakeButtonText}>📷 Retake</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.removePhotoButton}
-                  onPress={handleRemovePhoto}
-                >
-                  <Text style={styles.removePhotoButtonText}>🗑️ Remove</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.photoButtons}>
-              <TouchableOpacity
-                style={styles.cameraButton}
-                onPress={() => handleTakePhoto(true)}
-              >
-                <Text style={styles.cameraButtonText}>📷 Take Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.galleryButton}
-                onPress={() => handleTakePhoto(false)}
-              >
-                <Text style={styles.galleryButtonText}>🖼️ Choose from Gallery</Text>
-              </TouchableOpacity>
-            </View>
-          )}
           {/*Suggestions Dropdown*/}
           {showSuggestions && (
-            <View style={styles.suggestionsContainer}>
+            <View style={styles.fuelFormSuggestionsContainer}>
               {payeeSuggestions.map((item) => (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.suggestionItem}
+                  style={styles.fuelFormSuggestionItem}
                   onPress={() => handleSelectPayee(item)}
                 >
-                  <Text style={styles.suggestionPayee}>{item.payee_name}</Text>
-                  <Text style={styles.suggestionTin}>TIN: {item.tin_no}</Text>
+                  <Text style={styles.fuelFormSuggestionPayee}>{item.payee_name}</Text>
+                  <Text style={styles.fuelFormSuggestionTin}>TIN: {item.tin_no}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -713,6 +638,49 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
             value={referenceNo}
             onChangeText={setReferenceNo}
           />
+
+          {/* Receipt Photo */}
+          <Text style={styles.label}>Receipt Photo</Text>
+          {receiptPhoto ? (
+            <View style={styles.fuelFormPhotoContainer}>
+              <Image 
+                source={{ uri: photoUploaded === 1 && receiptPhotoUrl ? receiptPhotoUrl : receiptPhoto }} 
+                style={styles.fuelFormPhotoPreview} 
+              />
+              {photoUploaded === 1 && (
+                <Text style={styles.fuelFormUploadedBadge}>☁️ Uploaded to Drive</Text>
+              )}
+              <View style={styles.fuelFormPhotoButtons}>
+                <TouchableOpacity
+                  style={styles.fuelFormRetakeButton}
+                  onPress={() => handleTakePhoto(true)}
+                >
+                  <Text style={styles.fuelFormRetakeButtonText}>📷 Retake</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.fuelFormRemovePhotoButton}
+                  onPress={handleRemovePhoto}
+                >
+                  <Text style={styles.fuelFormRemovePhotoButtonText}>🗑️ Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.fuelFormPhotoButtons}>
+              <TouchableOpacity
+                style={styles.fuelFormCameraButton}
+                onPress={() => handleTakePhoto(true)}
+              >
+                <Text style={styles.fuelFormCameraButtonText}>📷 Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.fuelFormGalleryButton}
+                onPress={() => handleTakePhoto(false)}
+              >
+                <Text style={styles.fuelFormGalleryButtonText}>🖼️ Gallery</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Total Liters */}
           <Text style={styles.label}>Qty Liters <Text style={styles.required}>*</Text></Text>
@@ -745,10 +713,10 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
           {/* Arrival Time */}
           <Text style={styles.label}>Arrival Time <Text style={styles.required}>*</Text></Text>
           <TouchableOpacity
-            style={styles.captureButton}
+            style={styles.fuelFormCaptureButton}
             onPress={handleCaptureArrival}
           >
-            <Text style={styles.captureButtonText}>
+            <Text style={styles.fuelFormCaptureButtonText}>
               {formatTimeOnly(arrivalTime)}
             </Text>
           </TouchableOpacity>
@@ -756,17 +724,17 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
 
         {/* Draft / Finalize Buttons */}
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.draftButton} onPress={handleSaveDraft}>
+          <TouchableOpacity style={styles.fuelFormDraftButton} onPress={handleSaveDraft}>
             <Text style={styles.buttonText}>💾 Draft</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.finalizeButton} onPress={handleFinalize}>
+          <TouchableOpacity style={styles.fuelFormFinalizeButton} onPress={handleFinalize}>
             <Text style={styles.buttonText}>✅ Finalize</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
       {/* Type Picker Modal */}
-      <Modal visible={showTypePicker} animationType="slide" transparent>
+      <Modal visible={showTypePicker} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.pickerContent}>
             <Text style={styles.modalTitle}>Select Type</Text>
@@ -804,302 +772,5 @@ const TruckFuelFormScreen = ({ navigation, route }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  photoContainer: {
-    marginBottom: 12,
-  },
-  photoPreview: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 10,
-    backgroundColor: '#f0f0f0',
-  },
-  photoButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  cameraButton: {
-    flex: 1,
-    backgroundColor: '#1FCFFF',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cameraButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  galleryButton: {
-    flex: 1,
-    backgroundColor: '#FF9500',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  galleryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  retakeButton: {
-    flex: 1,
-    backgroundColor: '#1FCFFF',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  retakeButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  removePhotoButton: {
-    flex: 1,
-    backgroundColor: '#ff6b6b',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  removePhotoButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  required: {
-    color: 'red',
-  },
-  uploadedBadge: {
-    backgroundColor: '#4CAF50',
-    color: '#fff',
-    padding: 4,
-    borderRadius: 4,
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  suggestionsContainer: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    marginTop: -10,
-    marginBottom: 10,
-    maxHeight: 200,
-  },
-  suggestionItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  suggestionPayee: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  suggestionTin: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    padding: 12,
-    backgroundColor: '#e3f7ff',
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  infoLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    width: 80,
-  },
-  infoValue: {
-    fontSize: 16,
-    color: '#1FCFFF',
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    backgroundColor: '#fff',
-    marginBottom: 12,
-  },
-  inputReadOnly: {
-    backgroundColor: '#f0f0f0',
-    color: '#666',
-  },
-  dropdownButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    backgroundColor: '#fff',
-    marginBottom: 12,
-  },
-  dropdownText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  captureButton: {
-    backgroundColor: '#1FCFFF',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  captureButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 20,
-  },
-  draftButton: {
-    flex: 1,
-    backgroundColor: '#84827dff',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  finalizeButton: {
-    flex: 1,
-    backgroundColor: '#1FCFFF',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  pickerContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  pickerItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  pickerItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  pickerCloseButton: {
-    backgroundColor: '#ccc',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  pickerCloseButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  dropdownButtonInRow: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-  },
-  refreshIconButton: {
-    width: 50,
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#1FCFFF',
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  refreshIcon: {
-    fontSize: 20,
-  },
-  pickerScroll: {
-    maxHeight: 300,
-  },
-  emptyPickerContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyPickerText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 15,
-  },
-  fetchButton: {
-    backgroundColor: '#1FCFFF',
-    padding: 12,
-    borderRadius: 8,
-    minWidth: 120,
-    alignItems: 'center',
-  },
-  fetchButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});
 
 export default TruckFuelFormScreen;

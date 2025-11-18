@@ -1,17 +1,9 @@
 import React, {useState, useEffect, useCallback} from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
+import {View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, RefreshControl, ActivityIndicator} from 'react-native';
 import {getAllFuelRecords, deleteFuelRecord, getCurrentUser} from '../database/db';
 import {checkAndSyncFuel} from '../services/syncService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { styles, Colors } from '../styles/styles';
 
 const MonitoringScreen = ({navigation}) => {
   const [fuelRecords, setFuelRecords] = useState([]);
@@ -132,60 +124,60 @@ const MonitoringScreen = ({navigation}) => {
     const isDraft = item.synced === -1;
     
     return (
-      <View style={styles.recordCard}>
-        <View style={styles.recordHeader}>
-          <Text style={styles.tfpId}>{item.tfp_id}</Text>
+      <View style={styles.monitoringRecordCard}>
+        <View style={styles.monitoringRecordHeader}>
+          <Text style={styles.monitoringTfpId}>{item.tfp_id}</Text>
           <View style={[styles.badge, badge.style]}>
             <Text style={styles.badgeText}>{badge.text}</Text>
           </View>
         </View>
         
-        <Text style={styles.recordDetail}>👤 Driver: {item.utility_driver}</Text>
-        <Text style={styles.recordDetail}>🚚 Truck: {item.truck_plate}</Text>
+        <Text style={styles.monitoringRecordDetail}>👤 Driver: {item.utility_driver}</Text>
+        <Text style={styles.monitoringRecordDetail}>🚚 Truck: {item.truck_plate}</Text>
         {item.type && (
-          <Text style={styles.recordDetail}>💳 Type: {item.type}</Text>
+          <Text style={styles.monitoringRecordDetail}>💳 Type: {item.type}</Text>
         )}
         {item.cash_advance && (
-          <Text style={styles.recordDetail}>💵 Cash Advance: ₱{item.cash_advance}</Text>
+          <Text style={styles.monitoringRecordDetail}>💵 Cash Advance: ₱{item.cash_advance}</Text>
         )}
         
         {item.departure_time && (
-          <View style={styles.timeContainer}>
-            <View style={styles.timeRow}>
-              <Text style={styles.timeLabel}>Depart:</Text>
-              <Text style={styles.timeText}>{formatDateTime(item.departure_time)}</Text>
+          <View style={styles.monitoringTimeContainer}>
+            <View style={styles.monitoringTimeRow}>
+              <Text style={styles.monitoringTimeLabel}>Depart:</Text>
+              <Text style={styles.monitoringTimeText}>{formatDateTime(item.departure_time)}</Text>
             </View>
             {item.arrival_time && (
-              <View style={styles.timeRow}>
-                <Text style={styles.timeLabel}>Arrival:</Text>
-                <Text style={styles.timeText}>{formatDateTime(item.arrival_time)}</Text>
+              <View style={styles.monitoringTimeRow}>
+                <Text style={styles.monitoringTimeLabel}>Arrival:</Text>
+                <Text style={styles.monitoringTimeText}>{formatDateTime(item.arrival_time)}</Text>
               </View>
             )}
           </View>
         )}
 
         {item.total_amount && (
-          <Text style={styles.totalAmount}>Total: ₱{item.total_amount}</Text>
+          <Text style={styles.monitoringTotalAmount}>Total: ₱{item.total_amount}</Text>
         )}
 
         {item.created_by && (
-          <Text style={styles.createdBy}>👤 {item.created_by}</Text>
+          <Text style={styles.monitoringCreatedBy}>👤 {item.created_by}</Text>
         )}
 
         {/* Edit and Delete buttons for drafts */}
         {isDraft && (
-          <View style={styles.draftActions}>
+          <View style={styles.monitoringDraftActions}>
             <TouchableOpacity
-              style={styles.editButton}
+              style={styles.monitoringEditButton}
               onPress={() => handleEditDraft(item)}
             >
-              <Text style={styles.editButtonText}>✏️ Edit Draft</Text>
+              <Text style={styles.monitoringEditButtonText}>✏️ Edit Draft</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.deleteButton}
+              style={styles.monitoringDeleteButton}
               onPress={() => handleDeleteDraft(item)}
             >
-              <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+              <Text style={styles.monitoringDeleteButtonText}>🗑️ Delete</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -198,12 +190,12 @@ const MonitoringScreen = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.monitoringHeader}>
         <View>
-          <Text style={styles.title}>RFF List</Text>
+          <Text style={styles.monitoringTitle}>RFF List</Text>
         </View>
         <View>
-          <Text style={styles.count}>
+          <Text style={styles.monitoringCount}>
             Total: {fuelRecords.length} | Drafts: {draftCount} | Pending: {unsyncedCount}
           </Text>
         </View>
@@ -211,13 +203,13 @@ const MonitoringScreen = ({navigation}) => {
 
       {unsyncedCount > 0 && (
         <TouchableOpacity
-          style={styles.syncButton}
+          style={styles.monitoringSyncButton}
           onPress={handleSync}
           disabled={syncing}>
           {syncing ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.syncButtonText}>
+            <Text style={styles.monitoringSyncButtonText}>
               Sync {unsyncedCount} Records to Google Sheets
             </Text>
           )}
@@ -233,7 +225,7 @@ const MonitoringScreen = ({navigation}) => {
           data={fuelRecords}
           renderItem={renderFuelRecord}
           keyExtractor={item => item.id.toString()}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={styles.monitoringList}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -258,218 +250,5 @@ const MonitoringScreen = ({navigation}) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  count: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-  },
-  syncButton: {
-    backgroundColor: '#1FCFFF',
-    padding: 15,
-    margin: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  syncButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  list: {
-    padding: 15,
-  },
-  recordCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  recordHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  tfpId: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  syncedBadge: {
-    backgroundColor: '#d4edda',
-  },
-  unsyncedBadge: {
-    backgroundColor: '#fff3cd',
-  },
-  draftBadge: {
-    backgroundColor: '#f8d7da',
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#333',
-  },
-  recordDetail: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  timeRow: {
-    flex: 1,
-  },
-  timeLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  timeText: {
-    fontSize: 13,
-    color: '#333',
-  },
-  totalAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#10dc17ff',
-    marginTop: 8,
-  },
-  createdBy: {
-    fontSize: 12,
-    color: '#1FCFFF',
-    marginTop: 6,
-    fontWeight: '600',
-  },
-  draftActions: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 10,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  editButton: {
-    flex: 1,
-    backgroundColor: '#1FCFFF',
-    padding: 10,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    flex: 1,
-    backgroundColor: '#ff6b6b',
-    padding: 10,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 18,
-    color: '#999',
-  },
-  fabLogout: {
-    position: 'absolute',
-    right: 20,
-    bottom: 60,
-    backgroundColor: '#7aa2aaff',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fabLogoutText: {
-    fontSize: 24,
-  },
-  fabAccount: {
-    position: 'absolute',
-    right: 20,
-    bottom: 130,
-    backgroundColor: '#1FCFFF',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fabAccountText: {
-    fontSize: 24,
-  },
-  fabForm: {
-    position: 'absolute',
-    right: 20,
-    bottom: 200,
-    backgroundColor: '#4caf50',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fabFormText: {
-    fontSize: 24,
-  },
-});
 
 export default MonitoringScreen;

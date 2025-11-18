@@ -1,19 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  TextInput,
-  Modal,
-  ActivityIndicator,
-  RefreshControl,
-} from 'react-native';
+import {View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, TextInput, Modal, ActivityIndicator, RefreshControl} from 'react-native';
 import { getAllUsers, updateUser, deleteUser, getCurrentUser, initDatabase } from '../database/db';
 import * as SQLite from 'expo-sqlite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { styles, Colors } from '../styles/styles';
 
 const UserManagementScreen = ({ navigation }) => {
   const [users, setUsers] = useState([]);
@@ -178,26 +168,26 @@ const UserManagementScreen = ({ navigation }) => {
     const isCurrentUser = currentUser && item.id === currentUser.id;
     
     return (
-      <View style={styles.userCard}>
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>
+      <View style={styles.userManagementCard}>
+        <View style={styles.userManagementUserInfo}>
+          <Text style={styles.userManagementUserName}>
             {item.first_name} {item.middle_name ? item.middle_name + ' ' : ''}{item.last_name}
-            {isCurrentUser && <Text style={styles.youBadge}> (You)</Text>}
+            {isCurrentUser && <Text style={styles.userManagementYouBadge}> (You)</Text>}
           </Text>
-          <Text style={styles.userUsername}>
+          <Text style={styles.userManagementUserUsername}>
             @{item.username} • {item.position || 'Driver'}
           </Text>
         </View>
-        <View style={styles.actionButtons}>
+        <View style={styles.userManagementActionButtons}>
           <TouchableOpacity
-            style={styles.editButton}
+            style={styles.userManagementEditButton}
             onPress={() => handleEditUser(item)}>
-            <Text style={styles.editButtonText}>✏️</Text>
+            <Text style={styles.userManagementEditButtonText}>✏️</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.deleteButton}
+            style={styles.userManagementDeleteButton}
             onPress={() => handleDeleteUser(item)}>
-            <Text style={styles.deleteButtonText}>🗑️</Text>
+            <Text style={styles.userManagementDeleteButtonText}>🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -205,7 +195,7 @@ const UserManagementScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.userManagementContainer}>
       {loading ? (
         <ActivityIndicator size="large" color="#1FCFFF" />
       ) : (
@@ -216,13 +206,13 @@ const UserManagementScreen = ({ navigation }) => {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-          contentContainerStyle={styles.list}
+          contentContainerStyle={styles.userManagementList}
         />
       )}
 
       {/* Reset Database Button - For Testing Only */}
       <TouchableOpacity
-        style={styles.resetButton}
+        style={styles.userManagementResetButton}
         onPress={() => {
           Alert.alert(
             'Reset Database',
@@ -244,6 +234,7 @@ const UserManagementScreen = ({ navigation }) => {
                       DROP TABLE IF EXISTS users;
                       DROP TABLE IF EXISTS truck_fuel_monitoring;
                       DROP TABLE IF EXISTS cached_trucks;
+                      DROP TABLE IF EXISTS saved_payees;
                     `);
                     
                     await initDatabase();
@@ -273,28 +264,29 @@ const UserManagementScreen = ({ navigation }) => {
           );
         }}
       >
-        <Text style={styles.resetButtonText}>🔧 Reset All Database</Text>
+        <Text style={styles.userManagementResetButtonText}>🔧 Reset All Database</Text>
       </TouchableOpacity>
 
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={modalVisible}
         onRequestClose={closeModal}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+        <View style={styles.userManagementModalContainer}>
+          <View style={styles.userManagementModalContent}>
             <Text style={styles.modalTitle}>
               {editingUser ? 'Edit User' : 'Add New User'}
             </Text>
-
             <Text style={styles.label}>Position</Text>
-            <TouchableOpacity
-              style={styles.dropdownButton}
-              onPress={() => setShowPositionPicker(true)}
-            >
-              <Text style={styles.dropdownText}>{form.position}</Text>
-            </TouchableOpacity>
-            <Modal visible={showPositionPicker} animationType="slide" transparent>
+            <View style={styles.inputRow}>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setShowPositionPicker(true)}
+              >
+                <Text style={styles.dropdownText}>{form.position}</Text>
+              </TouchableOpacity>
+            </View>
+            <Modal visible={showPositionPicker} animationType="fade" transparent>
               <View style={styles.modalOverlay}>
                 <View style={styles.pickerContent}>
                   <Text style={styles.modalTitle}>Select Position</Text>
@@ -309,6 +301,7 @@ const UserManagementScreen = ({ navigation }) => {
                 </View>
               </View>
             </Modal>
+            <Text style={styles.label}>User Information</Text>
             <TextInput
               style={styles.input}
               placeholder="First Name"
@@ -327,6 +320,7 @@ const UserManagementScreen = ({ navigation }) => {
               value={form.last_name}
               onChangeText={text => setForm({ ...form, last_name: text })}
             />
+            <Text style={styles.label}>User Account</Text>
             <TextInput
               style={styles.input}
               placeholder="Username"
@@ -341,17 +335,17 @@ const UserManagementScreen = ({ navigation }) => {
               onChangeText={text => setForm({ ...form, password: text })}
             />
 
-            <View style={styles.modalButtons}>
+            <View style={styles.userManagementModalButtons}>
               <TouchableOpacity
-                style={styles.modalBtnCancel}
+                style={styles.userManagementModalBtnCancel}
                 onPress={closeModal}>
-                <Text style={styles.modalBtnText}>Cancel</Text>
+                <Text style={styles.userManagementModalBtnText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.modalBtnSave}
+                style={styles.userManagementModalBtnSave}
                 onPress={handleSaveUser}>
-                <Text style={styles.modalBtnText}>
+                <Text style={styles.userManagementModalBtnText}>
                   {editingUser ? 'Update' : 'Add'}
                 </Text>
               </TouchableOpacity>
@@ -362,116 +356,5 @@ const UserManagementScreen = ({ navigation }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  resetButton: {
-    backgroundColor: '#ff6b6b',
-    padding: 12,
-    margin: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 2,
-    bottom: 40,
-    borderColor: '#ff0000',
-  },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 5 },
-  dropdownButton: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, backgroundColor: '#fff', marginBottom: 15 },
-  dropdownText: {fontSize: 16, color: '#333' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  pickerContent: { backgroundColor: '#fff', borderRadius: 12, padding: 20 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
-  pickerItem: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
-  pickerItemText: { fontSize: 16, color: '#333' },
-  pickerCloseButton: { backgroundColor: '#ccc', padding: 5, borderRadius: 8, alignItems: 'center', marginTop: 10 },
-  pickerCloseButtonText: { color: '#333', fontSize: 12, padding: 5, fontWeight: '600' },
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  list: { padding: 15 },
-  userCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: { fontSize: 16, fontWeight: '600', color: '#333' },
-  youBadge: {
-    fontSize: 12,
-    color: '#1FCFFF',
-    fontWeight: '700',
-  },
-  userUsername: { fontSize: 12, color: '#666', marginTop: 2 },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  editButton: {
-    backgroundColor: '#b7eefdff',
-    padding: 10,
-    borderRadius: 8,
-    width: 45,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    fontSize: 18,
-  },
-  deleteButton: {
-    backgroundColor: '#ffc0c0ff',
-    padding: 10,
-    borderRadius: 8,
-    width: 45,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    fontSize: 18,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-  },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
-  modalBtnCancel: { 
-    backgroundColor: '#ccc', 
-    padding: 12, 
-    borderRadius: 8,
-    flex: 1,
-  },
-  modalBtnSave: { 
-    backgroundColor: '#1FCFFF', 
-    padding: 12, 
-    borderRadius: 8,
-    flex: 1,
-  },
-  modalBtnText: { color: '#fff', fontWeight: '600', textAlign: 'center' },
-});
 
 export default UserManagementScreen;

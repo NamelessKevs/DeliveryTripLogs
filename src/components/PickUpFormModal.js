@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Modal,
-  ScrollView,
-  Alert,
-} from 'react-native';
+import {View, Text, TextInput, TouchableOpacity, Modal, ScrollView, Alert} from 'react-native';
 import * as Location from 'expo-location';
-import { styles } from './CustomerDropModal'; // Import styles
+import { styles, Colors } from '../styles/styles';
 
 const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
   const [customer, setCustomer] = useState('');
@@ -152,16 +144,16 @@ const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={styles.pickUpModalOverlay}>
+        <View style={styles.pickUpModalContent}>
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.modalTitle}>
+            <Text style={styles.pickUpModalTitle}>
               {editingPickUp ? 'Edit Pick-Up' : 'Log Pick-Up'}
             </Text>
 
             {/* Customer Name */}
-            <Text style={styles.label}>Customer Name <Text style={styles.required}>*</Text></Text>
+            <Text style={styles.pickUpLabel}>Customer Name <Text style={styles.required}>*</Text></Text>
             <TextInput
               style={styles.input}
               placeholder="Enter customer name"
@@ -170,7 +162,7 @@ const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
             />
 
             {/* Delivery Address (Optional) */}
-            <Text style={styles.label}>Delivery Address</Text>
+            <Text style={styles.pickUpLabel}>Delivery Address</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter delivery address (optional)"
@@ -179,39 +171,41 @@ const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
             />
 
             {/* Arrival Time */}
-            <Text style={styles.label}>Arrival Time <Text style={styles.required}>*</Text></Text>
+            <Text style={styles.pickUpLabel}>Arrival Time <Text style={styles.required}>*</Text></Text>
             <TouchableOpacity
-              style={styles.captureButton}
+              style={styles.pickUpCaptureButton}
               onPress={handleCaptureArrival}
             >
-              <Text style={styles.captureButtonText}>
+              <Text style={styles.pickUpCaptureButtonText}>
                 {arrivalTime ? formatTimeDisplay(arrivalTime) : '[Capture Now]'}
               </Text>
             </TouchableOpacity>
 
             {/* Departure Time */}
-            <Text style={styles.label}>Departure Time</Text>
+            <Text style={styles.pickUpLabel}>Departure Time</Text>
             <TouchableOpacity
-              style={styles.captureButton}
+              style={styles.pickUpCaptureButton}
               onPress={handleCaptureDeparture}
             >
-              <Text style={styles.captureButtonText}>
+              <Text style={styles.pickUpCaptureButtonText}>
                 {departureTime ? formatTimeDisplay(departureTime) : '[Capture Now]'}
               </Text>
             </TouchableOpacity>
 
             {/* Quantity */}
-            <Text style={styles.label}>Quantity</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 125400"
-              keyboardType="number-pad"
-              value={quantity}
-              onChangeText={setQuantity}
-            />
+            <View style={styles.hideMe}>
+              <Text style={styles.pickUpLabel}>Quantity</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., 125400"
+                keyboardType="number-pad"
+                value={quantity}
+                onChangeText={setQuantity}
+              />
+            </View>
 
             {/* Remarks */}
-            <Text style={styles.label}>Remarks</Text>
+            <Text style={styles.pickUpLabel}>Remarks</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Add remarks or notes"
@@ -222,12 +216,12 @@ const PickUpFormModal = ({ visible, editingPickUp, onSave, onCancel }) => {
             />
 
             {/* Action Buttons */}
-            <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+            <View style={styles.pickUpButtonRow}>
+              <TouchableOpacity style={styles.pickUpCancelButton} onPress={onCancel}>
+                <Text style={styles.pickUpCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                <Text style={styles.saveButtonText}>
+              <TouchableOpacity style={styles.pickUpSaveButton} onPress={handleSave}>
+                <Text style={styles.pickUpSaveButtonText}>
                   {editingPickUp ? 'Update Pick-Up' : 'Save Pick-Up'}
                 </Text>
               </TouchableOpacity>

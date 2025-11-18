@@ -33,6 +33,7 @@ export const initDatabase = async () => {
       DROP TABLE IF EXISTS cached_trucks;
       DROP TABLE IF EXISTS cached_expense_types;
       DROP TABLE IF EXISTS delivery_expenses;
+      DROP TABLE IF EXISTS saved_payees;
     `);
 
     // Recreate tables fresh

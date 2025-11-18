@@ -1,38 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  FlatList,
-} from 'react-native';
-import { 
-  getCurrentUser, 
-  getCachedDeliveries, 
-  saveCachedDelivery,
-  getCachedDeliveryById,
-  getTripLogsByDeliveryId,
-  addTripLog,
-  updateTripLog,
-  updateCompanyTimes,
-  getNextDropNumber,
-  getLocalTimestamp,
-  getAllTripLogs,
-  addExpense,
-  getExpensesByDeliveryId,
-  deleteExpense,
-  getCachedExpenseTypes,
-  saveCachedExpenseTypes
-} from '../database/db';
+import {View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Modal, FlatList} from 'react-native';
+import {getCurrentUser, getCachedDeliveries, saveCachedDelivery, getCachedDeliveryById, getTripLogsByDeliveryId, addTripLog, updateTripLog, 
+updateCompanyTimes, getNextDropNumber, getLocalTimestamp, getAllTripLogs, addExpense, getExpensesByDeliveryId, deleteExpense, getCachedExpenseTypes, saveCachedExpenseTypes} from '../database/db';
 import { fetchDeliveriesFromAPI } from '../api/deliveryApi';
 import CustomerDropModal from '../components/CustomerDropModal';
 import ExpenseModal from '../components/ExpenseModal';
 import PickUpFormModal from '../components/PickUpFormModal';
+import { styles, Colors } from '../styles/styles';
 
 const DeliveryFormScreen = ({ navigation, route }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -521,14 +495,14 @@ const handleSaveDraft = async () => {
             </Text>
           </TouchableOpacity>
                     <TouchableOpacity
-            style={[styles.refreshButton, isEditMode && styles.editModeButton]}
+            style={[styles.deliveryFormRefreshButton, isEditMode && styles.deliveryFormEditModeButton]}
             onPress={handleRefreshDeliveries}
             disabled={syncing}
           >
             {syncing ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.refreshButtonText}>🔄</Text>
+              <Text style={styles.deliveryFormRefreshButtonText}>🔄</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -557,18 +531,18 @@ const handleSaveDraft = async () => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Trip Time Logs</Text>
               <TouchableOpacity
-                style={styles.captureButton}
+                style={styles.deliveryFormCaptureButton}
                 onPress={handleCaptureCompanyDeparture}
               >
-                <Text style={styles.captureButtonText}>
+                <Text style={styles.deliveryFormCaptureButtonText}>
                   Departure: {formatTimeOnly(companyDeparture)}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.captureButton}
+                style={styles.deliveryFormCaptureButton}
                 onPress={handleCaptureCompanyArrival}
               >
-                <Text style={styles.captureButtonText}>
+                <Text style={styles.deliveryFormCaptureButtonText}>
                   Arrival: {formatTimeOnly(companyArrival)}
                 </Text>
               </TouchableOpacity>
@@ -582,16 +556,16 @@ const handleSaveDraft = async () => {
               {expenses.length > 0 && (
                 <View style={{ marginBottom: 15 }}>
                   {expenses.map((expense, idx) => (
-                    <View key={idx} style={styles.expenseCard}>
+                    <View key={idx} style={styles.deliveryFormExpenseCard}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.expenseType}>{expense.type}</Text>
-                        <Text style={styles.expenseAmount}>₱{expense.amount}</Text>
+                        <Text style={styles.deliveryFormExpenseType}>{expense.type}</Text>
+                        <Text style={styles.deliveryFormExpenseAmount}>₱{expense.amount}</Text>
                       </View>
                       <TouchableOpacity
-                        style={styles.deleteExpenseButton}
+                        style={styles.deliveryFormDeleteExpenseButton}
                         onPress={() => handleDeleteExpense(expense.id)}
                       >
-                        <Text style={styles.deleteExpenseButtonText}>🗑️ Delete</Text>
+                        <Text style={styles.deliveryFormDeleteExpenseButtonText}>🗑️ Delete</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -600,10 +574,10 @@ const handleSaveDraft = async () => {
               
               {/* Add Expense Button */}
               <TouchableOpacity
-                style={styles.addExpenseButton}
+                style={styles.deliveryFormAddExpenseButton}
                 onPress={handleAddExpense}
               >
-                <Text style={styles.addExpenseButtonText}>+ Add Expense</Text>
+                <Text style={styles.deliveryFormAddExpenseButtonText}>+ Add Expense</Text>
               </TouchableOpacity>
             </View>
 
@@ -638,14 +612,14 @@ const handleSaveDraft = async () => {
                 const isLogged = getLoggedCustomers().includes(uniqueKey);
                 
                 return (
-                  <View key={idx} style={styles.checklistItem}>
+                  <View key={idx} style={styles.deliveryFormChecklistItem}>
                     <View style={{flex: 1}}>
                       <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                        <Text style={styles.checkbox}>{isLogged ? '☑' : '☐'}</Text>
-                        <Text style={styles.checklistText}>{customer.customer_name}</Text>
+                        <Text style={styles.deliveryFormCheckbox}>{isLogged ? '☑' : '☐'}</Text>
+                        <Text style={styles.deliveryFormChecklistText}>{customer.customer_name}</Text>
                       </View>
                       {customer.delivery_address && (
-                        <Text style={styles.deliveryAddressText}>
+                        <Text style={styles.deliveryFormDeliveryAddressText}>
                           📍 {customer.delivery_address}
                         </Text>
                       )}
@@ -659,18 +633,18 @@ const handleSaveDraft = async () => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Drop Logs</Text>
               {dropLogs.filter(log => log.drop_number > 0).map((log, idx) => (
-                <View key={log.id} style={styles.dropLogCard}>
-                  <Text style={styles.dropTitle}>
+                <View key={log.id} style={styles.deliveryFormDropLogCard}>
+                  <Text style={styles.deliveryFormDropTitle}>
                     Drop {log.drop_number}: ✅ {log.customer}
                   </Text>
-                  <Text style={styles.dropTime}>
+                  <Text style={styles.deliveryFormDropTime}>
                     🕐 {formatTimeOnly(log.customer_arrival)} - {formatTimeOnly(log.customer_departure)}
                   </Text>
                   <TouchableOpacity
-                    style={styles.editButton}
+                    style={styles.deliveryFormEditButton}
                     onPress={() => handleEditDrop(log)}
                   >
-                    <Text style={styles.editButtonText}>EDIT</Text>
+                    <Text style={styles.deliveryFormEditButtonText}>EDIT</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -678,25 +652,25 @@ const handleSaveDraft = async () => {
 
             {/* Add Drop Button */}
             <TouchableOpacity
-              style={styles.addDropButton}
+              style={styles.deliveryFormAddDropButton}
               onPress={handleAddDrop}
             >
-              <Text style={styles.addDropButtonText}>+ Log Customer Drop</Text>
+              <Text style={styles.deliveryFormAddDropButtonText}>+ Log Customer Drop</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.addDropButton, {backgroundColor: '#FF9500'}]}
+              style={[styles.deliveryFormAddDropButton, {backgroundColor: '#FF9500'}]}
               onPress={() => setShowPickUpModal(true)}
             >
-              <Text style={styles.addDropButtonText}>+ Log Pick-Up</Text>
+              <Text style={styles.deliveryFormAddDropButtonText}>+ Log Pick-Up</Text>
             </TouchableOpacity>
 
             {/* Draft / Finalize Buttons */}
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.draftButton} onPress={handleSaveDraft}>
+              <TouchableOpacity style={styles.deliveryFormDraftButton} onPress={handleSaveDraft}>
                 <Text style={styles.buttonText}>💾 Draft</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.finalizeButton} onPress={handleFinalize}>
+              <TouchableOpacity style={styles.deliveryFormFinalizeButton} onPress={handleFinalize}>
                 <Text style={styles.buttonText}>✅ Finalize</Text>
               </TouchableOpacity>
             </View>
@@ -705,7 +679,7 @@ const handleSaveDraft = async () => {
       </ScrollView>
 
       {/* Delivery Picker Modal */}
-      <Modal visible={showDeliveryPicker} animationType="slide" transparent>
+      <Modal visible={showDeliveryPicker} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Select Delivery</Text>
@@ -718,26 +692,26 @@ const handleSaveDraft = async () => {
                 return (
                   <TouchableOpacity
                     style={[
-                      styles.deliveryItem,
-                      hasLogs && styles.deliveryItemUsed
+                      styles.deliveryFormDeliveryItem,
+                      hasLogs && styles.deliveryFormDeliveryItemUsed
                     ]}
                     onPress={() => !hasLogs && handleSelectDelivery(item)}
                     disabled={hasLogs}
                   >
-                    <Text style={[styles.deliveryItemText, hasLogs && styles.deliveryItemTextDisabled]}>
+                    <Text style={[styles.deliveryFormDeliveryItemText, hasLogs && styles.deliveryFormDeliveryItemTextDisabled]}>
                       {item.dlf_code}
-                      {hasLogs && <Text style={styles.usedBadge}> ✓ Already logged</Text>}
+                      {hasLogs && <Text style={styles.deliveryFormUsedBadge}> ✓ Already logged</Text>}
                     </Text>
-                    <Text style={styles.deliveryItemSubtext}>{item.driver}</Text>
+                    <Text style={styles.deliveryFormDeliveryItemSubtext}>{item.driver}</Text>
                   </TouchableOpacity>
                 );
               }}
             />
             <TouchableOpacity
-              style={styles.modalCloseButton}
+              style={styles.deliveryFormModalCloseButton}
               onPress={() => setShowDeliveryPicker(false)}
             >
-              <Text style={styles.modalCloseButtonText}>Close</Text>
+              <Text style={styles.deliveryFormModalCloseButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -778,315 +752,5 @@ const handleSaveDraft = async () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  editModeButton: {
-    display: 'none',
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  dropdownDisabled: {
-    backgroundColor: '#f0f0f0',
-    opacity: 0.6,
-  },
-  refreshButton: {
-    backgroundColor: '#acecfdff',
-    padding: 15,
-    borderWidth: 1,
-    borderColor: '#1FCFFF',
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  expenseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  expenseType: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  deliveryAddressText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 30, // Align with customer name
-    marginTop: 2,
-  },
-  expenseAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#10dc17ff',
-  },
-  addExpenseButton: {
-    backgroundColor: '#1FCFFF',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  addExpenseButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  deleteExpenseButton: {
-    backgroundColor: '#ff4444',
-    padding: 8,
-    borderRadius: 6,
-  },
-  deleteExpenseButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  deliveryItemUsed: {
-    backgroundColor: '#f0f0f0',
-    opacity: 0.6,
-  },
-  deliveryItemTextDisabled: {
-    color: '#999',
-  },
-  form: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  usedBadge: {
-    color: '#10dc17ff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  refreshButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  dropdownButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    backgroundColor: '#fff',
-    marginBottom: 10,
-  },
-  dropdownText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    padding: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    width: 80,
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-  },
-  section: {
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  captureButton: {
-    backgroundColor: '#1FCFFF',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  captureButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  checklistItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  checkbox: {
-    fontSize: 20,
-    marginRight: 10,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  checklistText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  dropLogCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  dropTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 5,
-  },
-  dropTime: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-  },
-  editButton: {
-    backgroundColor: '#1FCFFF',
-    padding: 8,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  addDropButton: {
-    backgroundColor: '#10dc17ff',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  addDropButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  draftButton: {
-    flex: 1,
-    backgroundColor: '#84827dff',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  finalizeButton: {
-    flex: 1,
-    backgroundColor: '#1FCFFF',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    backgroundColor: '#fff',
-    marginBottom: 12,
-  },
-  inputDisabled: {
-    backgroundColor: '#f0f0f0',
-    color: '#504f4fff',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  modalSubtext: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-  },
-  deliveryItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  deliveryItemText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  deliveryItemSubtext: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  modalCloseButton: {
-    backgroundColor: '#ccc',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  modalCloseButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
 
 export default DeliveryFormScreen;

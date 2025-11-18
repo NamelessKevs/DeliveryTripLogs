@@ -1,17 +1,9 @@
 import React, {useState, useEffect, useCallback} from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  RefreshControl,
-  ActivityIndicator,
-} from 'react-native';
+import {View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, RefreshControl, ActivityIndicator} from 'react-native';
 import {getAllTripLogs, deleteTripLog, getExpensesByDeliveryId, deleteExpense} from '../database/db';
 import {checkAndSync} from '../services/syncService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { styles, Colors } from '../styles/styles';
 
 const TripListScreen = ({navigation}) => {
   const [trips, setTrips] = useState([]);
@@ -205,75 +197,75 @@ const groupTripsByDelivery = (trips) => {
     
     return (
       <View style={styles.tripCard}>
-        <View style={styles.tripHeader}>
-          <Text style={styles.driverName}>{item.dlf_code}</Text>
+        <View style={styles.tripCardHeader}>
+          <Text style={styles.tripCardDriverName}>{item.dlf_code}</Text>
           <View style={[styles.badge, badge.style]}>
             <Text style={styles.badgeText}>{badge.text}</Text>
           </View>
         </View>
         
-        <Text style={styles.truckPlate}>👤 {item.driver}</Text>
+        <Text style={styles.tripCardTruckPlate}>👤 {item.driver}</Text>
         {item.helper && (
-          <Text style={styles.truckPlate}>🤝 {item.helper}</Text>
+          <Text style={styles.tripCardTruckPlate}>🤝 {item.helper}</Text>
         )}
-        <Text style={styles.truckPlate}>🚚 {item.plate_no} | Trip {item.trip_count}</Text>
-        <Text style={styles.truckPlate}>ODO Depart: {item.plant_odo_departure} | ODO Arrive: {item.plant_odo_arrival}</Text>
+        <Text style={styles.tripCardTruckPlate}>🚚 {item.plate_no} | Trip {item.trip_count}</Text>
+        <Text style={styles.tripCardTruckPlate}>ODO Depart: {item.plant_odo_departure} | ODO Arrive: {item.plant_odo_arrival}</Text>
         
-        <View style={styles.timeContainer}>
-          <View style={styles.timeRow}>
-            <Text style={styles.timeLabel}>Depart:</Text>
-            <Text style={styles.timeText}>{formatDateTime(item.company_departure)}</Text>
+        <View style={styles.tripCardTimeContainer}>
+          <View style={styles.tripCardTimeRow}>
+            <Text style={styles.tripCardTimeLabel}>Depart:</Text>
+            <Text style={styles.tripCardTimeText}>{formatDateTime(item.company_departure)}</Text>
           </View>
           {item.company_arrival && (
-            <View style={styles.timeRow}>
-              <Text style={styles.timeLabel}>Arrival:</Text>
-              <Text style={styles.timeText}>{formatDateTime(item.company_arrival)}</Text>
+            <View style={styles.tripCardTimeRow}>
+              <Text style={styles.tripCardTimeLabel}>Arrival:</Text>
+              <Text style={styles.tripCardTimeText}>{formatDateTime(item.company_arrival)}</Text>
             </View>
           )}
         </View>
 
         {/* Drops Section */}
         {item.drops.length > 0 ? (
-          <View style={styles.routeContainer}>
-            <Text style={styles.locationLabel}>Drops:</Text>
+          <View style={styles.tripCardRouteContainer}>
+            <Text style={styles.tripCardLocationLabel}>Drops:</Text>
             {item.drops.map((drop, idx) => (
               <View key={drop.id} style={{marginTop: 8}}>
-                <Text style={styles.locationText}>
+                <Text style={styles.tripCardLocationText}>
                   {drop.drop_number}. {drop.customer}
                   {drop.form_type === 'pick-up' && (
-                    <Text style={styles.pickUpBadge}> 📦 Pick-Up</Text>
+                    <Text style={styles.tripPickUpBadge}> 📦 Pick-Up</Text>
                   )}
                 </Text>
-                <Text style={styles.timeText}>
+                <Text style={styles.tripCardTimeText}>
                     {formatDateTime(drop.customer_arrival)} - {formatDateTime(drop.customer_departure)}
                 </Text>
               </View>
             ))}
           </View>
         ) : (
-          <View style={styles.routeContainer}>
-            <Text style={styles.remarks}>No drops logged yet</Text>
+          <View style={styles.tripCardRouteContainer}>
+            <Text style={styles.tripCardRemarks}>No drops logged yet</Text>
           </View>
         )}
 
         {item.created_by && (
-          <Text style={styles.createdBy}>👤 {item.created_by}</Text>
+          <Text style={styles.tripCardCreatedBy}>👤 {item.created_by}</Text>
         )}
 
         {/* Edit and Delete buttons for drafts */}
         {isDraft && (
-          <View style={styles.draftActions}>
+          <View style={styles.tripCardDraftActions}>
             <TouchableOpacity
-              style={styles.editButton}
+              style={styles.tripCardEditButton}
               onPress={() => handleEditDraft(item)}
             >
-              <Text style={styles.editButtonText}>✏️ Edit Draft</Text>
+              <Text style={styles.tripCardEditButtonText}>✏️ Edit Draft</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.deleteButton}
+              style={styles.tripCardDeleteButton}
               onPress={() => handleDeleteDraft(item)}
             >
-              <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+              <Text style={styles.tripCardDeleteButtonText}>🗑️ Delete</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -287,12 +279,12 @@ const groupTripsByDelivery = (trips) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.tripListHeader}>
         <View>
-          <Text style={styles.title}>Trip Logs</Text>
+          <Text style={styles.tripListTitle}>Trip Logs</Text>
         </View>
         <View>
-        <Text style={styles.count}>
+        <Text style={styles.tripListCount}>
           Total: {groupedDeliveries.length} | Drafts: {draftCount} | Pending: {unsyncedCount}
         </Text>
         </View>
@@ -300,13 +292,13 @@ const groupTripsByDelivery = (trips) => {
 
       {unsyncedCount > 0 && (
         <TouchableOpacity
-          style={styles.syncButton}
+          style={styles.tripListSyncButton}
           onPress={handleSync}
           disabled={syncing}>
           {syncing ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.syncButtonText}>
+            <Text style={styles.tripListSyncButtonText}>
               Sync {unsyncedCount} Trips to Google Sheets
             </Text>
           )}
@@ -322,7 +314,7 @@ const groupTripsByDelivery = (trips) => {
           data={groupTripsByDelivery(trips)}
           renderItem={renderDelivery}
           keyExtractor={item => item.dlf_code}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={styles.tripListList}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -333,7 +325,7 @@ const groupTripsByDelivery = (trips) => {
       <TouchableOpacity
         style={styles.fabAccount}
         onPress={handleUserManagement}>
-        <Text style={styles.fab3Text}>🔑</Text>
+        <Text style={styles.fabAccountText}>🔑</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -350,250 +342,5 @@ const groupTripsByDelivery = (trips) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  count: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-  },
-  pickUpBadge: {
-    color: '#FF9500',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  syncButton: {
-    backgroundColor: '#1FCFFF',
-    padding: 15,
-    margin: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  syncButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  list: {
-    padding: 15,
-  },
-  tripCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tripHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  driverName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  syncedBadge: {
-    backgroundColor: '#d4edda',
-  },
-  unsyncedBadge: {
-    backgroundColor: '#fff3cd',
-  },
-  draftBadge: {
-    backgroundColor: '#f8d7da',
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#333',
-  },
-  truckPlate: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-  },
-  routeContainer: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    marginVertical: 8,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-    width: 50,
-  },
-  locationText: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-  },
-  arrow: {
-    fontSize: 16,
-    color: '#1FCFFF',
-    textAlign: 'center',
-    marginVertical: 4,
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  timeRow: {
-    flex: 1,
-  },
-  timeLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  timeText: {
-    fontSize: 13,
-    color: '#333',
-  },
-  remarks: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 8,
-    fontStyle: 'italic',
-  },
-  createdBy: {
-    fontSize: 12,
-    color: '#1FCFFF',
-    marginTop: 6,
-    fontWeight: '600',
-  },
-  draftActions: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 10,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  editButton: {
-    flex: 1,
-    backgroundColor: '#1FCFFF',
-    padding: 10,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    flex: 1,
-    backgroundColor: '#ff6b6b',
-    padding: 10,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 18,
-    color: '#999',
-    marginBottom: 20,
-  },
-  fabLogout: {
-    position: 'absolute',
-    right: 20,
-    bottom: 60,
-    backgroundColor: '#7aa2aaff',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fabLogoutText: {
-    fontSize: 24,
-  },
-  fabAccount: {
-    position: 'absolute',
-    right: 20,
-    bottom: 130,
-    backgroundColor: '#1FCFFF',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fabAccountText: {
-    fontSize: 24,
-  },
-  fabForm: {
-    position: 'absolute',
-    right: 20,
-    bottom: 200,
-    backgroundColor: '#4caf50',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  fabFormText: {
-    fontSize: 24,
-  },
-});
 
 export default TripListScreen;
