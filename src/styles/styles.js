@@ -109,6 +109,14 @@ export const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 10,
   },
+  dropdownButtonExpenses: {
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderRadius: 8,
+    padding: 15,
+    backgroundColor: Colors.bgWhite,
+    marginBottom: 10,
+  },
   dropdownButtonInRow: {
     flex: 1,
     borderWidth: 1,

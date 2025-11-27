@@ -34,7 +34,7 @@ const ExpenseModal = ({ visible, expenseTypes, onSave, onCancel }) => {
           {/* Expense Type Selector */}
           <Text style={styles.expenseModalLabel}>Expense Type *</Text>
           <TouchableOpacity
-            style={styles.dropdownButton}
+            style={styles.dropdownButtonExpenses}
             onPress={() => setShowTypePicker(true)}
           >
             <Text style={styles.dropdownText}>
