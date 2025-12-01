@@ -45,7 +45,7 @@ const DeliveryFormScreen = ({ navigation, route }) => {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.deliveryFormRefreshButton, isEditMode && styles.deliveryFormEditModeButton]}
+            style={[styles.deliveryFormRefreshButton]}
             onPress={handleRefreshDeliveries}
             disabled={syncing}
           >
