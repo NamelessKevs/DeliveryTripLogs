@@ -117,7 +117,7 @@ export const useDeliveryForm = (navigation, route) => {
           setExpenseTypes(result.expense_types);
         }
         
-        Alert.alert('Success', `Fetched ${cached.length} deliveries`);
+        Alert.alert('Fetch Data Updated', `DLF Fetch: ${cached.length}`);
       } else {
         Alert.alert('Info', 'No deliveries found');
       }
