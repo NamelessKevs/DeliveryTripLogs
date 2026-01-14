@@ -215,7 +215,7 @@ const CustomerDropModal = ({
                 const uniqueKey = `${customer.customer_name}|${customer.delivery_address}`;
                 const isLogged = loggedCustomers.includes(uniqueKey);
                 const isSelected = selectedCustomer === uniqueKey;
-                const isDisabled = isLogged && !editingDrop;
+                const isDisabled = editingDrop && !isSelected ;
                 
                 return (
                   <TouchableOpacity

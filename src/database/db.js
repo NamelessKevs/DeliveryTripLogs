@@ -12,6 +12,7 @@ export const initDatabase = async () => {
     console.log('🚀 Starting Application...');
 
     // Drop all existing tables (force recreate)
+    // Remove this when production
     await database.execAsync(`
       DROP TABLE IF EXISTS cached_deliveries;
       DROP TABLE IF EXISTS trip_logs;
@@ -164,7 +165,7 @@ export const seedTestUser = async () => {
     await database.runAsync(
       `INSERT OR IGNORE INTO users (first_name, middle_name, last_name, username, password, position)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      ['Ryan', 'Ralleca', 'Acosta', 'test', 'test', 'Service Vehicle Driver']
+      ['Ryan', 'Ralleca', 'Acosta', 'test', 'test', 'Logistics Driver']
     );
     console.log('Test user seeded');
   } catch (error) {

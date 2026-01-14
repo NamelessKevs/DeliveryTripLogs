@@ -1230,7 +1230,7 @@ export const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLighter,
   },
   customerDropRadioOptionDisabled: {
-    opacity: 0.5,
+    display: 'none',
   },
   customerDropRadioButton: {
     width: 20,
